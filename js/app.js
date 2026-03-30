@@ -18,6 +18,12 @@ const state = {
 
 const TOUR_PREF_KEY = 'tg_tour_skipped';
 
+function avatarSrc(char) {
+  if (char === 'CTO')    return 'images/avatar-cto.png';
+  if (char === 'INTERN') return 'images/avatar-intern.png';
+  return 'images/avatar-system.png';
+}
+
 function loadTourPreference() {
   state.tourSkipped = localStorage.getItem(TOUR_PREF_KEY) === '1';
 }
@@ -107,36 +113,36 @@ const dialogue = {
   onLoad: [
     { char: 'SYSTEM', text: 'ERROR: status artifact not found at expected path.' },
     { char: 'SYSTEM', text: 'Expected: signal.txt — Content: SYSTEM ONLINE' },
-    { char: 'CTO',    text: 'New hire. Signal file is missing. Fix it.' },
-    { char: 'INTERN', text: "it's literally just a text file lol" },
-    { char: 'CTO',    text: "One more word and you're writing it manually. All 847 of them." },
+    { char: 'CTO',    text: 'Signal file is missing. You have 10 minutes before I start assigning blame.' },
+    { char: 'INTERN', text: "it's just a text file. how hard can it be" },
+    { char: 'CTO',    text: "Famous last words. I've seen careers end over a missing semicolon." },
   ],
   onInit: [
-    { char: 'INTERN', text: "wait it actually downloaded something??" },
-    { char: 'SYSTEM', text: "Provider ready. Awaiting simulation." },
+    { char: 'INTERN', text: "wait... it actually downloaded a provider for a text file??" },
+    { char: 'SYSTEM', text: "Provider ready. The universe is watching." },
   ],
   onPlanSuccess: [
-    { char: 'CTO', text: "Good. You planned first. That's the bare minimum. Execute." },
+    { char: 'CTO', text: "You planned before applying. I'm almost proud. Don't ruin it." },
   ],
   onPlanFail: [
-    { char: 'CTO', text: "That's not the signal file. Read the error logs. They exist for a reason." },
-    { char: 'INTERN', text: "psst... the logs literally say what it should be called" },
+    { char: 'CTO', text: "That's not it. The logs exist for a reason. Try reading them." },
+    { char: 'INTERN', text: "the error literally tells you what it wants. like word for word" },
   ],
   onChaos: [
-    { char: 'CTO',    text: "You applied without simulating first. Are you the Intern?" },
-    { char: 'INTERN', text: "hey i resent that" },
-    { char: 'CTO',    text: "Chaos logged. Don't do it again." },
+    { char: 'CTO',    text: "You applied without a plan. In production. Let that sink in." },
+    { char: 'INTERN', text: "bro..." },
+    { char: 'CTO',    text: "Chaos logged. This goes in the post-mortem. With your name on it." },
   ],
   onApply: [
     { char: 'SYSTEM', text: "✓ signal.txt created. SYSTEM ONLINE." },
-    { char: 'CTO',    text: "System restored. Now decommission it cleanly." },
-    { char: 'INTERN', text: "wait you're gonna DELETE it?? you just made it" },
-    { char: 'CTO',    text: "Infrastructure is not permanent. Clean up after yourself." },
+    { char: 'CTO',    text: "System restored. Now destroy it cleanly. Infrastructure is not a souvenir." },
+    { char: 'INTERN', text: "wait we're deleting it?? we just fixed it??" },
+    { char: 'CTO',    text: "Terraform doesn't do keepsakes. Destroy it and move on." },
   ],
   onDestroy: [
     { char: 'SYSTEM', text: "✓ local_file.signal destroyed." },
-    { char: 'CTO',    text: "Clean. That's how it's done." },
-    { char: 'INTERN', text: "okay fine that was kind of cool" },
+    { char: 'CTO',    text: "Clean. No drift. No orphaned resources. This is the baseline, not the achievement." },
+    { char: 'INTERN', text: "okay that was actually kind of terrifying. in a good way" },
   ],
 };
 
@@ -161,22 +167,41 @@ function npcMessage(char, text, delay = 0) {
 const TOAST_LINGER = 3200;
 
 function showTyping(char, cb) {
-  // Show typing indicator as a mini toast
-  const stack = document.getElementById('toast-stack');
   const cls = charClass(char);
+  const msgs = document.getElementById('npc-messages');
 
-  const toast = document.createElement('div');
-  toast.className = 'npc-toast';
-  toast.innerHTML = `
-    <div class="toast-name ${cls}">${char}</div>
-    <div class="toast-bubble ${cls}-toast typing-indicator" style="display:flex;gap:4px;align-items:center">
-      <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
-    </div>`;
-  stack.appendChild(toast);
+  // Add typing indicator into the panel
+  const wrap = document.createElement('div');
+  wrap.className = 'npc-msg npc-typing-row';
 
+  const avatar = document.createElement('img');
+  avatar.className = 'npc-avatar';
+  avatar.src = avatarSrc(char);
+  avatar.alt = char;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'npc-bubble';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = `npc-name ${cls}`;
+  nameEl.textContent = char;
+
+  const dots = document.createElement('div');
+  dots.className = `npc-text ${cls}-msg typing-indicator`;
+  dots.style.cssText = 'display:flex;gap:4px;align-items:center;width:fit-content';
+  dots.innerHTML = `<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>`;
+
+  bubble.appendChild(nameEl);
+  bubble.appendChild(dots);
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  // Remove typing indicator then fire callback
   const duration = 700 + Math.random() * 500;
   setTimeout(() => {
-    if (toast.parentNode) stack.removeChild(toast);
+    if (wrap.parentNode) msgs.removeChild(wrap);
     cb();
   }, duration);
 }
@@ -184,13 +209,17 @@ function showTyping(char, cb) {
 function appendMessage(char, text) {
   const cls = charClass(char);
 
-  // 1. Show as toast pop-up
-  spawnToast(char, text, cls);
-
-  // 2. Simultaneously append to side panel (no delay — panel is the archive)
   const msgs = document.getElementById('npc-messages');
   const wrap = document.createElement('div');
   wrap.className = 'npc-msg';
+
+  const avatar = document.createElement('img');
+  avatar.className = 'npc-avatar';
+  avatar.src = avatarSrc(char);
+  avatar.alt = char;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'npc-bubble';
 
   const nameEl = document.createElement('div');
   nameEl.className = `npc-name ${cls}`;
@@ -200,8 +229,10 @@ function appendMessage(char, text) {
   textEl.className = `npc-text ${cls}-msg`;
   textEl.textContent = text;
 
-  wrap.appendChild(nameEl);
-  wrap.appendChild(textEl);
+  bubble.appendChild(nameEl);
+  bubble.appendChild(textEl);
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
   msgs.appendChild(wrap);
   msgs.scrollTop = msgs.scrollHeight;
 }
@@ -789,9 +820,9 @@ const tourSteps = [
 ];
 
 const finalTourDialogue = [
-  { char: 'CTO',    text: 'New hire. Signal file is missing. Fix it.' },
-  { char: 'INTERN', text: "it's literally just a text file lol" },
-  { char: 'CTO',    text: "One more word and you're writing it manually. All 847 of them." },
+  { char: 'CTO',    text: 'Signal file is missing. You have 10 minutes before I start assigning blame.' },
+  { char: 'INTERN', text: "it's just a text file. how hard can it be" },
+  { char: 'CTO',    text: "Famous last words. I've seen careers end over a missing semicolon." },
 ];
 
 let tourIndex = 0;
@@ -879,7 +910,7 @@ function finishTour() {
 
 function skipTour() {
   state.tourSkipped = true;
-  localStorage.setItem(TOUR_PREF_KEY, '1');
+  //localStorage.setItem(TOUR_PREF_KEY, '1');
   finishTour();
 }
 

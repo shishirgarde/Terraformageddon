@@ -11,6 +11,17 @@
 
 </head>
 <body class="level1">
+<!-- Mobile blockout -->
+
+<div id="mobile-wall">
+  <div id="mobile-wall-icon">⚠️</div>
+  <div id="mobile-wall-title">Best viewed on desktop</div>
+  <div id="mobile-wall-text">
+    Level 1 is designed for wide screens so the editor, map, and terminal fit side by side.
+    Please open this page on a tablet or desktop to continue the mission without scrolling.
+  </div>
+  <a class="mobile-wall-btn" href="index.html">← BACK TO BASE</a>
+</div>
 
 <div id="app">
 
@@ -242,9 +253,6 @@
   </div>
 </div>
 
-<!-- ═══ TOAST STACK ═══ -->
-<div id="toast-stack"></div>
-
 <!-- ═══ WAR ROOM ═══ -->
 <div id="war-room">
   <div id="incident-card">
@@ -280,6 +288,7 @@
       </div>
     </div>
     <div id="incident-card-footer">
+      <button class="war-btn secondary" onclick="window.location.href='index.html'">[ HOME ]</button>
       <button class="war-btn secondary" onclick="showNextMission()">[ NEXT MISSION ]</button>
       <button class="war-btn primary" onclick="restartGame()">[ PLAY AGAIN ]</button>
     </div>
