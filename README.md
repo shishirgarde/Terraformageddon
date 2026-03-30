@@ -4,6 +4,8 @@ A browser-based, gamified Terraform learning game. Players are dropped into live
 
 No setup. No install. Runs entirely in the browser.
 
+**Live:** https://shishirgarde.github.io/Terraformageddon/
+
 ---
 
 ## Concept
