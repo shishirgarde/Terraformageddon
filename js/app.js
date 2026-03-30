@@ -16,19 +16,11 @@ const state = {
   tourSkipped: false,
 };
 
-const TOUR_PREF_KEY = 'tg_tour_skipped';
-
 function avatarSrc(char) {
   if (char === 'CTO')    return 'images/avatar-cto.png';
   if (char === 'INTERN') return 'images/avatar-intern.png';
   return 'images/avatar-system.png';
 }
-
-function loadTourPreference() {
-  state.tourSkipped = localStorage.getItem(TOUR_PREF_KEY) === '1';
-}
-
-loadTourPreference();
 
 // ═══════════════════════════════════════════════════════
 // TERMINAL STRINGS
@@ -60,22 +52,6 @@ const T = {
   Plan: 1 to add, 0 to change, 0 to destroy.
   ─────────────────────────────────
   ✓ Simulation complete. Safe to execute.`,
-
-  planFail: `▶ SIMULATING FIX...
-  Refreshing state in-memory...
-  ─────────────────────────────────
-  ERROR: Validation failed.
-
-  One or more required values are incorrect.
-  Check filename and content attributes.
-
-  Expected:
-    filename = "signal.txt"
-    content  = "SYSTEM ONLINE"
-
-  Plan: 0 to add. Aborted.
-  ─────────────────────────────────
-  ✗ Simulation failed. Fix your configuration.`,
 
   apply: `▶ EXECUTING FIX...
   local_file.signal: Creating...
@@ -110,13 +86,6 @@ const T = {
 // ═══════════════════════════════════════════════════════
 
 const dialogue = {
-  onLoad: [
-    { char: 'SYSTEM', text: 'ERROR: status artifact not found at expected path.' },
-    { char: 'SYSTEM', text: 'Expected: signal.txt — Content: SYSTEM ONLINE' },
-    { char: 'CTO',    text: 'Signal file is missing. You have 10 minutes before I start assigning blame.' },
-    { char: 'INTERN', text: "it's just a text file. how hard can it be" },
-    { char: 'CTO',    text: "Famous last words. I've seen careers end over a missing semicolon." },
-  ],
   onInit: [
     { char: 'INTERN', text: "wait... it actually downloaded a provider for a text file??" },
     { char: 'SYSTEM', text: "Provider ready. The universe is watching." },
@@ -162,9 +131,6 @@ function npcMessage(char, text, delay = 0) {
     }, delay);
   }));
 }
-
-// How long a toast stays visible before sliding out (ms)
-const TOAST_LINGER = 3200;
 
 function showTyping(char, cb) {
   const cls = charClass(char);
@@ -235,26 +201,6 @@ function appendMessage(char, text) {
   wrap.appendChild(bubble);
   msgs.appendChild(wrap);
   msgs.scrollTop = msgs.scrollHeight;
-}
-
-function spawnToast(char, text, cls) {
-  const stack = document.getElementById('toast-stack');
-
-  const toast = document.createElement('div');
-  toast.className = 'npc-toast';
-  toast.innerHTML = `
-    <div class="toast-name ${cls}">${char}</div>
-    <div class="toast-bubble ${cls}-toast">${text}</div>`;
-  stack.appendChild(toast);
-
-  // Auto-dismiss after linger time
-  setTimeout(() => dismissToast(toast), TOAST_LINGER);
-}
-
-function dismissToast(toast) {
-  if (!toast.parentNode) return;
-  toast.classList.add('toasting-out');
-  setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 380);
 }
 
 function charClass(char) {
@@ -910,7 +856,6 @@ function finishTour() {
 
 function skipTour() {
   state.tourSkipped = true;
-  //localStorage.setItem(TOUR_PREF_KEY, '1');
   finishTour();
 }
 

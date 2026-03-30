@@ -863,7 +863,7 @@
     align-items: center;
   }
 
-  #tour-next {
+  #tour-next, #debrief-next {
     font-family: var(--mono);
     font-size: 10px;
     font-weight: 700;
@@ -877,11 +877,11 @@
     border-radius: 2px;
     transition: all 0.2s;
   }
-  #tour-next:hover {
+  #tour-next:hover, #debrief-next:hover {
     background: rgba(0,255,159,0.1);
   }
 
-  #tour-skip {
+  #tour-skip, #debrief-back {
     font-family: var(--mono);
     font-size: 10px;
     letter-spacing: 0.1em;
@@ -894,7 +894,7 @@
     border-radius: 2px;
     transition: all 0.2s;
   }
-  #tour-skip:hover {
+  #tour-skip:hover, #debrief-back:hover:not(:disabled) {
     background: rgba(125,133,144,0.1);
   }
 
@@ -987,40 +987,6 @@
     font-size: 9px;
     color: var(--grey);
     letter-spacing: 0.1em;
-  }
-
-  #debrief-next {
-    font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 7px 16px;
-    border: 1px solid var(--green);
-    color: var(--green);
-    background: transparent;
-    cursor: pointer;
-    border-radius: 2px;
-    transition: all 0.2s;
-  }
-  #debrief-next:hover { background: rgba(0,255,159,0.1); }
-
-  #debrief-back {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 7px 16px;
-    border: 1px solid var(--border2);
-    color: var(--grey);
-    background: transparent;
-    cursor: pointer;
-    border-radius: 2px;
-    transition: all 0.2s;
-  }
-
-  #debrief-back:hover:not(:disabled) {
-    background: rgba(125,133,144,0.1);
   }
 
   #debrief-back:disabled {
@@ -1692,15 +1658,6 @@ footer {
   display: inline-block;
 }
 
-@media (max-width: 768px) {
-  #mobile-wall {
-    display: flex;
-  }
-  body.level1 #app {
-    display: none;
-  }
-}
-
 .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1100px; margin: 0 auto; }
 .pcard { background: var(--bg2); border: 2px solid var(--border); padding: 20px 24px; }
 .pchar { font-family: var(--display); font-size: 18px; color: var(--green); margin-bottom: 8px; letter-spacing: 0.08em; }
@@ -1758,12 +1715,13 @@ body.level1 #scroll-top {
   nav, #hero, #how, #missions, #manifesto, footer { padding-left: 24px; padding-right: 24px; }
   .hero-inner { padding: 40px 24px; }
 }
-@media (max-width: 560px) {
-  .steps { grid-template-columns: 1fr; }
-  .step { border-right: none; border-bottom: 3px solid #000; }
-}
-
 @media (max-width: 768px) {
+  #mobile-wall {
+    display: flex;
+  }
+  body.level1 #app {
+    display: none;
+  }
   body.landing {
     padding-top: 28px;
   }
@@ -1858,15 +1816,4 @@ body.level1 #scroll-top {
   flex: 1;
 }
 
-.toast-inner {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 8px;
-}
 
-.toast-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
