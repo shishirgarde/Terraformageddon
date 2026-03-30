@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Terraformageddon — Learn Terraform by Fixing Production</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Bangers&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+
+</head>
+<body class="landing">
+
+<!-- TICKER -->
+<div id="ticker">
+  <div class="ticker-badge"><div class="ticker-dot"></div> P0 ACTIVE</div>
+  <div class="ticker-scroll">
+    <span class="ticker-item">⚠ Uptimely Inc. PROD DEGRADED</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">signal.txt NOT FOUND</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">CHAOS SCORE: RISING</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">ALL HANDS ON DECK</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">THE CTO IS WATCHING YOU</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">TERRAFORM CONFIG: MISSING</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">DOWNSTREAM SERVICES: BLIND</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">⚠ Uptimely Inc. PROD DEGRADED</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">signal.txt NOT FOUND</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">CHAOS SCORE: RISING</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">ALL HANDS ON DECK</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">THE CTO IS WATCHING YOU</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">TERRAFORM CONFIG: MISSING</span><span class="ticker-sep"> /// </span>
+    <span class="ticker-item">DOWNSTREAM SERVICES: BLIND</span><span class="ticker-sep"> /// </span>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">⬡ TERRAFORMAGEDDON</a>
+  <div class="nav-links">
+    <a href="#how">How It Works</a>
+    <a href="#missions">Missions</a>
+    <a href="level1.html" class="nav-cta">START NOW →</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════
+     HERO
+═══════════════════════════════ -->
+<section id="hero">
+  <div class="hero-inner">
+
+    <div class="hero-left">
+      <div class="hero-tag"><div class="hero-tag-dot"></div> Incident Active · Uptimely Production</div>
+      <h1 class="hero-title">
+        Production<br>is <span class="red">on</span><br><span class="green">fire.</span>
+      </h1>
+      <p class="hero-desc">
+        Terraformageddon drops you into <strong>live infrastructure incidents</strong>.
+        Write real Terraform. Fix real (simulated) chaos. Learn IaC the way engineers actually learn it —
+        <strong>under pressure, with a paranoid CTO watching your every keystroke.</strong>
+      </p>
+      <div class="hero-btns">
+        <a href="#missions" class="btn-primary">VIEW MISSIONS →</a>
+        <a href="level1.html" class="btn-secondary">SKIP TO LEVEL 1</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hstat">
+          <div class="hstat-val">4<span class="u">+</span></div>
+          <div class="hstat-label">Missions Planned</div>
+        </div>
+        <div class="hstat">
+          <div class="hstat-val">0<span class="u">px</span></div>
+          <div class="hstat-label">Setup Required</div>
+        </div>
+        <div class="hstat">
+          <div class="hstat-val">∞</div>
+          <div class="hstat-label">Chaos Possible</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTO card -->
+    <div class="hero-right">
+      <div class="char-card">
+        <div class="char-card-bar bar-red">
+          <span class="char-name">THE CTO</span>
+          <span class="char-role">Director of Controlling Chaos</span>
+        </div>
+        <div class="char-slot portrait slot-cto">
+          <img src="images/cto.webp" alt="The CTO">
+          <img src="" alt="The CTO" data-char="cto" />
+        </div>
+        <div class="bubble bubble-bl">Fix it.<br>Now.<br>No excuses.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════
+     SECTION 1 — What Is This? (The Intern)
+     Image LEFT, Text RIGHT
+═══════════════════════════════ -->
+<section class="feat ab-green">
+  <div class="feat-inner">
+
+    <div class="feat-img">
+      <div class="char-slot full slot-intern">
+        <img src="images/intern.webp" alt="The Intern">
+        <img src="" alt="The Intern" data-char="intern" />
+      </div>
+      <!-- Name bar pinned to bottom -->
+      <div class="char-card-bar bar-green" style="position:absolute;bottom:0;left:0;right:0;border-top:3px solid #000;border-bottom:none;">
+        <span class="char-name dark">THE INTERN</span>
+        <span class="char-role dark">Definitely Not Responsible</span>
+      </div>
+      <div class="bubble bubble-tr">You want ME <br>to fix it?</div>
+    </div>
+
+    <div class="feat-text">
+      <div class="feat-eyebrow ey-green">What Is Terraformageddon?</div>
+      <h2 class="feat-title">Learn Terraform.<br><span class="hl-green">Save Production.</span></h2>
+      <p class="feat-body">
+        Most tutorials teach Terraform with a <strong>slideshow and a blank editor</strong>.
+        Terraformageddon throws you into a burning production environment instead.
+        <br><br>
+        Each level is a <strong>real incident</strong>. Something is broken. The clock is ticking.
+        Your team is panicking — especially the Intern. You write Terraform config and fix it,
+        or watch the chaos meter climb while your CTO takes notes.
+        <br><br>
+        By the time you're done, you'll understand resource blocks, plan vs apply,
+        state management, and why you <strong>never</strong> skip <code>terraform plan</code>.
+      </p>
+      <div class="badge"><span>⚡</span> No setup. No install. Runs entirely in your browser.</div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════
+     SECTION 2 — Write Real Code (CTO)
+     Text LEFT, Image RIGHT
+═══════════════════════════════ -->
+<section class="feat ab-orange">
+  <div class="feat-inner flip">
+
+    <div class="feat-img" style="border-left:4px solid #000;border-right:none;">
+      <div class="char-slot full slot-cto">
+        <img src="images/editor.webp" alt="Code Editor">
+        <img src="" alt="Code Editor for the actual Terraform Code" data-char="editor" />
+      </div>
+      <div class="char-card-bar bar-red" style="position:absolute;bottom:0;left:0;right:0;border-top:3px solid #000;border-bottom:none;">
+        <span class="char-name">THE CTO</span>
+        <span class="char-role">Has Trust Issues With Applies</span>
+      </div>
+      <div class="bubble bubble-bl">You NEVER apply<br>without planning.<br>NEVER.</div>
+    </div>
+
+    <div class="feat-text">
+      <div class="feat-eyebrow ey-orange">Write Real Terraform</div>
+      <h2 class="feat-title">A real editor.<br><span class="hl-orange">Real HCL.</span></h2>
+      <p class="feat-body">
+        No fill-in-the-blank quizzes. No multiple choice.
+        You write actual <strong>HashiCorp Configuration Language</strong> in a Monaco editor —
+        the same editor that powers VS Code. Resource blocks, arguments, provider configs.
+        <br><br>
+        The system validates your code and tells you <strong>exactly what's wrong and why</strong>
+        — wrong filename, empty content, missing resource block.
+        The CTO's dialogue changes based on your specific mistake.
+      </p>
+      <div class="callout">
+        <span class="cm"># Mission: restore the signal file</span><br>
+        <span class="kw">resource</span> "local_file" "signal" {<br>
+        &nbsp;&nbsp;<span class="at">filename</span> = "signal.txt"<br>
+        &nbsp;&nbsp;<span class="at">content</span>  = "SYSTEM ONLINE"<br>
+        }
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════
+     SECTION 3 — Chaos System
+     Image LEFT, Text RIGHT
+═══════════════════════════════ -->
+<section class="feat ab-red">
+  <div class="feat-inner">
+
+    <div class="feat-img">
+      <div class="char-slot full slot-chaos">
+        <img src="images/chaos.webp" alt="Chaos war room scene">
+        <img src="" alt="Chaos war room scene" data-char="chaos" />
+      </div>
+      <div class="bubble bubble-tr bubble-red">CHAOS SCORE<br>+25 !!!</div>
+    </div>
+
+    <div class="feat-text">
+      <div class="feat-eyebrow ey-red">The Chaos System</div>
+      <h2 class="feat-title">Every mistake<br><span class="hl-red">costs you.</span></h2>
+      <p class="feat-body">
+        Skip <code>terraform plan</code>? Chaos goes up. Submit the wrong filename? Chaos goes up.
+        Leave your fields blank and run anyway? The CTO is going to have very specific words.
+        <br><br>
+        The <strong>Chaos Bar</strong> tracks every bad decision in real time.
+        The diagnostic system knows <em>exactly</em> what you did wrong —
+        not just "validation failed" but "you left content blank" or "that filename doesn't match."
+        <br><br>
+        Your final war room debrief reveals every chaos event with the CTO's notes.
+        <strong>He remembers everything.</strong>
+      </p>
+      <div class="badge"><span>📊</span> Your chaos score is visible to your entire war room.</div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════
+     SECTION 4 — Debrief / Learn
+     Text LEFT, Image RIGHT
+═══════════════════════════════ -->
+<section class="feat ab-yellow">
+  <div class="feat-inner flip">
+
+    <div class="feat-img" style="border-left:4px solid #000;border-right:none;">
+      <div class="char-slot full slot-green">
+        <img src="images/debrief.webp" alt="Post-mission debrief scene">
+        <img src="" alt="Post-mission debrief" data-char="debrief" />
+        <div class="placeholder">
+          <div class="placeholder-icon">📡</div>
+          <div class="placeholder-label">Scene Art Placeholder</div>
+          <div class="placeholder-hint">War room debrief: scorecard on screen,<br>Intern actually impressed,<br>calm CTO, comic book style</div>
+        </div>
+      </div>
+      <div class="char-card-bar bar-grey" style="position:absolute;bottom:0;left:0;right:0;border-top:3px solid #000;border-bottom:none;">
+        <span class="char-name">POST-INCIDENT REVIEW</span>
+        <span class="char-role">Your war room scorecard</span>
+      </div>
+      <div class="bubble bubble-bl">okay fine...<br>that was kind<br>of cool</div>
+    </div>
+
+    <div class="feat-text">
+      <div class="feat-eyebrow ey-yellow">After Every Mission</div>
+      <h2 class="feat-title">Fix first.<br><span class="hl-orange">Understand after.</span></h2>
+      <p class="feat-body">
+        After every incident, a <strong>5-step debrief</strong> walks through everything you just did
+        and why it matters in real infrastructure.
+        <br><br>
+        What is a resource block? Why does <code>terraform plan</code> exist?
+        What is Terraform state? Why do you <code>destroy</code> instead of deleting files?
+        <br><br>
+        Then your <strong>war room scorecard</strong> shows chaos events, time taken,
+        and an incident summary. Even the Intern learns something.
+        The CTO grades on a curve. Barely.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════
+     HOW IT WORKS
+═══════════════════════════════ -->
+<section id="how">
+  <div class="sec-head">
+    <h2>How It <span>Works</span></h2>
+    <p>Four steps. One incident. Real Terraform.</p>
+  </div>
+  <div class="steps">
+    <div class="step s1">
+      <div class="step-num">01</div>
+      <div class="step-icon">📡</div>
+      <div class="step-title">Get Briefed</div>
+      <div class="step-body">A P0 incident drops. The CTO assigns you. The Intern makes it worse. Read the mission parameters — they're in the code comments.</div>
+    </div>
+    <div class="step s2">
+      <div class="step-num">02</div>
+      <div class="step-icon">⌨️</div>
+      <div class="step-title">Write Config</div>
+      <div class="step-body">Fill in the Terraform resource block in the Monaco editor. <code>filename</code>, <code>content</code>, real HCL. The same syntax you'd use in production.</div>
+    </div>
+    <div class="step s3">
+      <div class="step-num">03</div>
+      <div class="step-icon">⚡</div>
+      <div class="step-title">Plan → Apply → Destroy</div>
+      <div class="step-body"><code>terraform plan</code> first. Always. Then <code>apply</code> to fix it. Then <code>destroy</code> to clean up. Skip step one and chaos rises.</div>
+    </div>
+    <div class="step s4">
+      <div class="step-num">04</div>
+      <div class="step-icon">📋</div>
+      <div class="step-title">Debrief</div>
+      <div class="step-body">A 5-step post-incident review explains every concept. Your war room scorecard shows exactly how clean — or chaotic — your fix was.</div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════
+     MISSION BOARD
+═══════════════════════════════ -->
+<section id="missions">
+  <div style="max-width:1200px;margin:0 auto;">
+    <div class="sec-head" style="margin-bottom:40px;">
+      <h2>Mission <span>Board</span></h2>
+      <p>1 of 4 missions active — complete Level 1 to unlock clearance</p>
+    </div>
+    <div class="mission-grid">
+
+      <a href="level1.html" class="mcard active-m">
+        <div class="maccent ma-green"></div>
+        <div class="mbody">
+          <div class="mtop"><div class="mlevel">Level 01</div><div class="mstatus ms-active">● ACTIVE</div></div>
+          <div class="mincident">P0 · Production Degraded</div>
+          <div class="mtitle">Signal Missing</div>
+          <div class="mdesc">A critical status artifact has vanished. Downstream services are blind. The CTO is watching. Restore the signal file using Terraform before chaos reaches critical.</div>
+          <div class="mtags">
+            <span class="mtag">local_file</span>
+            <span class="mtag">resource blocks</span>
+            <span class="mtag">plan → apply</span>
+            <span class="mtag">destroy</span>
+          </div>
+          <div class="mfooter">
+            <div class="mxp">Reward: <strong>+130 XP</strong></div>
+            <div class="mcta">ENTER MISSION →</div>
+          </div>
+        </div>
+      </a>
+
+      <div class="mcard locked">
+        <div class="maccent ma-orange"></div>
+        <div class="mbody">
+          <div class="mtop"><div class="mlevel">Level 02</div><div class="mstatus ms-soon">COMING SOON</div></div>
+          <div class="mincident">P1 · Config Drift Detected</div>
+          <div class="mtitle">Ghost Variable</div>
+          <div class="mdesc">A Terraform variable is referenced but never declared. The pipeline is failing silently. Track down the drift and declare it before it cascades.</div>
+          <div class="mtags"><span class="mtag">variables</span><span class="mtag">outputs</span><span class="mtag">tfvars</span></div>
+          <div class="mfooter"><div class="mxp">Reward: <strong>+180 XP</strong></div><div class="mcta">LOCKED</div></div>
+        </div>
+      </div>
+
+      <div class="mcard locked">
+        <div class="maccent ma-grey"></div>
+        <div class="mbody">
+          <div class="mtop"><div class="mlevel">Level 03</div><div class="mstatus ms-locked">LOCKED</div></div>
+          <div class="mincident">P0 · State Corruption</div>
+          <div class="mtitle">State of Emergency</div>
+          <div class="mdesc">Terraform state is out of sync with reality. Resources exist that Terraform doesn't know about. Reconcile state without destroying live infra.</div>
+          <div class="mtags"><span class="mtag">terraform state</span><span class="mtag">import</span><span class="mtag">refresh</span></div>
+          <div class="mfooter"><div class="mxp">Reward: <strong>+240 XP</strong></div><div class="mcta">LOCKED</div></div>
+        </div>
+      </div>
+
+      <div class="mcard locked">
+        <div class="maccent ma-grey"></div>
+        <div class="mbody">
+          <div class="mtop"><div class="mlevel">Level 04</div><div class="mstatus ms-locked">LOCKED</div></div>
+          <div class="mincident">P0 · Module Failure</div>
+          <div class="mtitle">The Broken Module</div>
+          <div class="mdesc">A shared module is crashing deployments across three environments. Find the breaking change and patch it without taking down prod.</div>
+          <div class="mtags"><span class="mtag">modules</span><span class="mtag">workspaces</span><span class="mtag">depends_on</span></div>
+          <div class="mfooter"><div class="mxp">Reward: <strong>+300 XP</strong></div><div class="mcta">LOCKED</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════
+     MANIFESTO
+═══════════════════════════════ -->
+<section id="manifesto">
+  <div class="mani-text">
+    Infrastructure breaks in production.<br>
+    <span class="g">You learn by fixing it.</span>
+    <span class="r"> Not by reading about it.</span>
+  </div>
+  <div class="mani-sub">Terraformageddon · Learn Terraform the hard way · Free · No setup · Browser only</div>
+  <div style="margin-top:44px;">
+    <a href="level1.html" class="btn-primary" style="display:inline-block;">START MISSION 01 →</a>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════
+     FOOTER
+═══════════════════════════════ -->
+<footer>
+  <div class="flogo">⬡ TERRAFORMAGEDDON</div>
+  <div class="fcopy">No backend · No signup · No setup · Just incidents · Built to teach Terraform</div>
+</footer>
+
+
+<!-- ════════════════════════════════════════════════════
+     AI IMAGE GENERATION PROMPTS
+     Set #prompts { display: block } in CSS to reveal
+════════════════════════════════════════════════════ -->
+<div id="prompts">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="sec-head" style="margin-bottom:40px;">
+      <h2>Image <span>Prompts</span></h2>
+      <p>Generate these in Midjourney / DALL-E 3 / Ideogram. Save to images/ and update the src="" attributes above.</p>
+    </div>
+    <div class="pgrid">
+
+      <div class="pcard">
+        <div class="pchar">THE CTO — Hero &amp; Section 2</div>
+        <div class="pfile">→ images/cto.webp &amp; images/cto-plan.webp</div>
+        <div class="ptext">
+          <em>Flat vector comic book illustration. A stern tech CTO, mid-40s, short dark hair, sharp jaw, dark collared shirt. Holding coffee in one hand, pointing aggressively at something off-screen. Expression: furious, authoritative, zero tolerance. Background: dark ops room with subtle green terminal glow. Bold black outlines, limited palette — dark bg, red accent, green highlight. No gradients. Cel-shaded. Portrait orientation, upper body focus.</em>
+          <br><br>
+          <em>Variation 2 (cto-plan.webp): Same character, now pointing at a whiteboard showing "terraform plan → terraform apply" with an arrow diagram. Expression: dead serious, one eyebrow raised. Background has orange glow. Same flat vector comic style.</em>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="pchar">THE INTERN — Section 1</div>
+        <div class="pfile">→ images/intern.webp</div>
+        <div class="ptext">
+          <em>Flat vector comic book illustration. A young software intern, early 20s, messy hair, oversized hoodie, wide nervous eyes. Holding a laptop, looking over their shoulder with a panicked but slightly smug expression. Background: server room or ops center with blinking status lights. Bold black outlines, limited palette — dark bg, yellow accent, chaotic energy. Cel-shaded, no gradients. Portrait orientation.</em>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="pchar">CHAOS SCENE — Section 3</div>
+        <div class="pfile">→ images/chaos.webp</div>
+        <div class="ptext">
+          <em>Flat vector comic book action panel illustration. A dramatic war room scene: CTO in background, hands on head, furious. Intern in foreground, arms raised in panic. Large monitor behind them shows a red progress bar at maximum with "CHAOS: 100%" label. Warning symbols, exclamation marks, and fire emoji scattered as comic panel elements. Dynamic composition, bold red and orange accents, dark background. High energy. No gradients. Flat cel-shaded.</em>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="pchar">DEBRIEF SCENE — Section 4</div>
+        <div class="pfile">→ images/debrief.webp</div>
+        <div class="ptext">
+          <em>Flat vector comic book illustration. A post-incident war room scene: CTO standing with arms folded, slightly less angry, almost impressed. Intern is seated, looking at a large monitor showing a green "MISSION COMPLETE" scorecard with stats. The chaos bar on screen shows 0%. Calm, slightly triumphant mood. Dark ops room background with green terminal glow. Flat cel-shaded, bold outlines, no gradients. Landscape/scene orientation.</em>
+        </div>
+      </div>
+
+    </div>
+
+<div style="margin-top:28px;padding:20px 24px;background:var(--bg2);border:2px solid var(--border);">
+  <div style="font-family:var(--mono);font-size:10px;color:var(--grey);line-height:1.9;">
+    <strong style="color:var(--text);">INTEGRATION STEPS:</strong><br>
+        1. Generate images with your preferred AI tool (Midjourney, DALL-E 3, Ideogram, Adobe Firefly)<br>
+        2. Save outputs to an <code style="color:var(--green)">images/</code> folder alongside this HTML file<br>
+        3. Find the <code style="color:var(--green)">&lt;img src="" data-char="cto"&gt;</code> tags above and set the correct src paths<br>
+        4. Placeholder divs auto-hide when image loads (handled by the script below)<br>
+        5. <strong style="color:var(--text);">Recommended sizes:</strong> 800×1066px (3:4) for character portraits · 800×600px (4:3) for scenes<br>
+        6. To reveal this prompt panel: find <code style="color:var(--green)">#prompts { display: none }</code> in the CSS and set it to <code style="color:var(--green)">block</code>
+  </div>
+</div>
+</div>
+</div>
+
+<button id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Scroll to top">▲</button>
+
+<script src="js/app.js"></script>
+
+</body>
+</html>

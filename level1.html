@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Terraformageddon — Level 1: Signal Missing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&family=Bangers&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+
+</head>
+<body class="level1">
+
+<div id="app">
+
+  <!-- ═══ HUD ═══ -->
+  <div id="hud">
+    <div id="hud-title">⬡ LEVEL 1: Signal Missing</div>
+
+    <div id="hud-center">
+      <div id="chaos-label">CHAOS</div>
+      <div id="chaos-bar-outer">
+        <div id="chaos-bar-inner"></div>
+      </div>
+    </div>
+
+    <div id="hud-right">
+      <div id="reputation-badge">Script Kiddie</div>
+      <div id="xp-counter">XP: 0</div>
+    </div>
+    <div id="xp-flash"></div>
+  </div>
+
+  <!-- ═══ NPC PANEL ═══ -->
+  <div class="panel" id="npc-panel">
+    <div class="panel-header">
+      <div class="dot red"></div>
+      <div class="dot yellow"></div>
+      <div class="dot green"></div>
+      War Room — #incidents
+    </div>
+    <div id="npc-messages"></div>
+  </div>
+
+  <!-- ═══ EDITOR PANEL ═══ -->
+  <div class="panel" id="editor-panel">
+    <div id="editor-tab">
+      <span style="color:var(--grey)">›</span>
+      <span class="active">main.tf</span>
+    </div>
+    <div id="monaco-container"></div>
+    <div id="editor-actions">
+      <button class="action-btn active" id="btn-init" onclick="handleInit()">
+        <span class="btn-label">[ INITIALIZE SYSTEM ]</span>
+        <span class="btn-cmd">terraform init</span>
+      </button>
+      <button class="action-btn locked" id="btn-plan" onclick="handlePlan()">
+        <span class="btn-label">[ SIMULATE FIX ]</span>
+        <span class="btn-cmd">terraform plan</span>
+      </button>
+      <button class="action-btn locked" id="btn-apply" onclick="handleApply()">
+        <span class="btn-label">[ EXECUTE FIX ]</span>
+        <span class="btn-cmd">terraform apply -auto-approve</span>
+      </button>
+      <button class="action-btn danger" id="btn-destroy" onclick="handleDestroyClick()" style="display:none">
+        <span class="btn-label">[ DECOMMISSION ]</span>
+        <span class="btn-cmd">terraform destroy -auto-approve</span>
+      </button>
+      <div id="decommission-confirm">
+        <span>Are you sure? This destroys the resource.</span>
+        <button onclick="confirmDestroy()">CONFIRM</button>
+        <button class="cancel" onclick="cancelDestroy()">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MAP PANEL ═══ -->
+  <div class="panel" id="map-panel">
+    <div class="panel-header">
+      <div class="dot" id="map-dot"></div>
+      Infrastructure Map — Uptimely Inc.-prod
+    </div>
+    <div id="map-canvas">
+      <svg id="map-svg" viewBox="0 0 340 300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="glow-green">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="glow-red">
+            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#7d8590" />
+          </marker>
+          <marker id="arrowhead-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#00ff9f" />
+          </marker>
+        </defs>
+
+        <!-- Dependency line -->
+        <line id="dep-line"
+          x1="170" y1="110" x2="170" y2="182"
+          stroke="#7d8590" stroke-width="1.5"
+          stroke-dasharray="6,4"
+          marker-end="url(#arrowhead)"
+        />
+
+        <!-- Node 1: Uptimely Inc. SYSTEM -->
+        <g id="node-Uptimely Inc.">
+          <rect x="90" y="40" width="160" height="68" rx="4"
+            fill="#0d1f16" stroke="#00ff9f" stroke-width="1.5"
+            filter="url(#glow-green)"
+          />
+          <text x="170" y="66" text-anchor="middle"
+            font-family="JetBrains Mono" font-size="9" fill="#00ff9f"
+            letter-spacing="2" font-weight="700">Uptimely Inc. SYSTEM</text>
+          <text x="170" y="84" text-anchor="middle"
+            font-family="JetBrains Mono" font-size="8" fill="#00c97d">● OPERATIONAL</text>
+          <text x="170" y="99" text-anchor="middle"
+            font-family="JetBrains Mono" font-size="7.5" fill="#7d8590">prod-cluster-01</text>
+        </g>
+
+        <!-- Node 2: signal.txt (ghost state) -->
+        <g id="node-signal">
+          <rect id="signal-rect" x="120" y="190" width="100" height="60" rx="4"
+            fill="rgba(255,68,68,0.04)" stroke="#ff4444" stroke-width="1.5"
+            stroke-dasharray="5,3"
+            filter="url(#glow-red)"
+          />
+          <text id="signal-label" x="170" y="218" text-anchor="middle"
+            font-family="JetBrains Mono" font-size="8.5" fill="#ff4444"
+            letter-spacing="1">signal.txt</text>
+          <text id="signal-status" x="170" y="235" text-anchor="middle"
+            font-family="JetBrains Mono" font-size="11" fill="#ff4444">?</text>
+        </g>
+      </svg>
+    </div>
+    <div id="map-status">
+      <span>SYSTEM DEGRADED</span> — signal artifact missing
+    </div>
+  </div>
+
+  <!-- ═══ TERMINAL ═══ -->
+  <div class="panel" id="terminal-panel">
+    <div id="terminal-header" onclick="toggleTerminal()">
+      <span>▶ Terminal — terraformageddon</span>
+      <span id="terminal-toggle">▼</span>
+    </div>
+    <div id="terminal-output"><span id="terminal-cursor"></span></div>
+  </div>
+
+</div>
+
+<!-- ═══ BRIEFING MODAL ═══ -->
+<div id="briefing-overlay">
+  <div id="briefing-card">
+    <div id="briefing-header">
+      <div id="briefing-alert-bar">
+        <div id="briefing-alert-dot"></div>
+        <div id="briefing-alert-text">Incident Active — P0 — All hands</div>
+      </div>
+      <div id="briefing-title-area">
+        <div id="briefing-eyebrow">Mission Briefing · Level 1</div>
+        <div id="briefing-title">The system is down.<br>A <span>critical file is missing.</span></div>
+      </div>
+    </div>
+    <div id="briefing-body">
+      <div class="briefing-section">
+        <div class="briefing-section-label">Situation</div>
+        <div class="briefing-section-text">
+          Uptimely Inc.'s production cluster is <strong>degraded</strong>. The status signal file — a tiny artifact that tells the system it's alive — has vanished. Without it, downstream services are blind. Every second it's missing, the chaos grows.
+        </div>
+      </div>
+      <div class="briefing-mission-box">
+        <div class="briefing-mission-label">Your Mission</div>
+        <div class="briefing-mission-text">
+          Restore the missing signal file using <strong>Terraform</strong>. Write the config, simulate the change, execute it — then decommission cleanly when done.
+        </div>
+      </div>
+      <div class="briefing-section">
+        <div class="briefing-section-label">How to fix it</div>
+        <div class="briefing-steps">
+          <div class="briefing-step">
+            <div class="briefing-step-num">1</div>
+            <span>Write a Terraform resource block that creates <strong>signal.txt</strong> with the content <strong>SYSTEM ONLINE</strong></span>
+          </div>
+          <div class="briefing-step">
+            <div class="briefing-step-num">2</div>
+            <span>Simulate the change first — never apply blind</span>
+          </div>
+          <div class="briefing-step">
+            <div class="briefing-step-num">3</div>
+            <span>Execute the fix, confirm the system comes back online</span>
+          </div>
+          <div class="briefing-step">
+            <div class="briefing-step-num">4</div>
+            <span>Decommission the resource cleanly. Infrastructure is not permanent.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="briefing-footer">
+      <button id="briefing-accept" onclick="acceptBriefing()">ACCEPT MISSION →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOUR ═══ -->
+<div id="tour-overlay">
+  <div id="tour-spotlight"></div>
+  <div id="tour-card">
+    <div id="tour-step-label">ORIENTATION · STEP 1 OF 3</div>
+    <div id="tour-title">The War Room</div>
+    <div id="tour-text">This is where your team talks. The CTO gives orders, the Intern causes chaos, and SYSTEM alerts tell you what's broken. Pay attention — the clues to fix things are in here.</div>
+    <div id="tour-footer">
+      <div id="tour-progress">● ○ ○</div>
+      <div id="tour-actions">
+        <button id="tour-skip" onclick="skipTour()">SKIP ORIENTATION</button>
+        <button id="tour-next" onclick="tourNext()">NEXT →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DEBRIEF TOUR ═══ -->
+<div id="debrief-overlay">
+  <div id="debrief-highlight"></div>
+  <div id="debrief-card">
+    <div id="debrief-eyebrow">DEBRIEF · STEP 1 OF 5</div>
+    <div id="debrief-title">What just happened?</div>
+    <div id="debrief-body"></div>
+  <div id="debrief-footer">
+    <div id="debrief-progress">● ○ ○ ○ ○</div>
+    <div id="debrief-actions">
+      <button id="debrief-back" onclick="debriefBack()">← BACK</button>
+      <button id="debrief-next" onclick="debriefNext()">NEXT →</button>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ═══ TOAST STACK ═══ -->
+<div id="toast-stack"></div>
+
+<!-- ═══ WAR ROOM ═══ -->
+<div id="war-room">
+  <div id="incident-card">
+    <div id="incident-card-header">
+      <div id="mission-complete">✓ MISSION COMPLETE</div>
+      <div id="mission-subtitle">Level 1: Signal Missing</div>
+    </div>
+    <div id="incident-card-body">
+      <div class="incident-row">
+        <span class="label">Outcome</span>
+        <span class="value green">System Restored</span>
+      </div>
+      <div class="incident-row">
+        <span class="label">Chaos Events</span>
+        <span class="value" id="war-chaos-count">0</span>
+      </div>
+      <div class="incident-row">
+        <span class="label">Reputation</span>
+        <span class="value">Script Kiddie +50 XP</span>
+      </div>
+      <div class="incident-row">
+        <span class="label">Time Taken</span>
+        <span class="value" id="war-time">—</span>
+      </div>
+      <div class="incident-divider"></div>
+      <div id="incident-summary-section">
+        <div id="incident-summary-label">Incident Summary</div>
+        <div id="incident-summary-text">Analyzing mission data...</div>
+      </div>
+      <div id="chaos-event-section">
+        <div id="chaos-event-title">⚠ CHAOS EVENT RECORDED</div>
+        <div id="chaos-event-text">Applied without planning.<br>The CTO has noted this.</div>
+      </div>
+    </div>
+    <div id="incident-card-footer">
+      <button class="war-btn secondary" onclick="showNextMission()">[ NEXT MISSION ]</button>
+      <button class="war-btn primary" onclick="restartGame()">[ PLAY AGAIN ]</button>
+    </div>
+  </div>
+</div>
+
+<!-- Monaco Editor from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script>
+  require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+  require(['vs/editor/editor.main'], function() { initMonaco(); });
+</script>
+
+
+  <script src="js/app.js"></script>
+</body>
+</html>
