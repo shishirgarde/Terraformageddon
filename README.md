@@ -41,7 +41,7 @@ images/           Character and scene artwork
 
 ### State Machine
 
-`idle → inited → planned → applied → destroyed`
+`idle → init → planned → applied → destroyed`
 
 ### Chaos System
 
