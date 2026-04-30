@@ -14,6 +14,9 @@ const state = {
   startTime: Date.now(),
   editor: null,
   tourSkipped: false,
+  sessionId: null,
+  ws: null,
+  commandInFlight: false,
 };
 
 function avatarSrc(char) {
@@ -23,63 +26,115 @@ function avatarSrc(char) {
 }
 
 // ═══════════════════════════════════════════════════════
-// TERMINAL STRINGS
+// BACKEND SESSION
 // ═══════════════════════════════════════════════════════
 
-const T = {
-  init: `▶ INITIALIZING CONTOSO SYSTEMS...
-  Resolving provider registry...
-  Downloading hashicorp/local v2.4.0...
-  Verifying checksums...
-  Provider installed. v2.4.0
-  Initializing backend: local
-  Backend initialized.
-  ─────────────────────────────────
-  ✓ Terraformageddon ready.
-  Tip: Run SIMULATE FIX before EXECUTE FIX.`,
+async function initSession() {
+  try {
+    const session = await api.createSession('level1');
+    state.sessionId = session.session_id;
 
-  planSuccess: `▶ SIMULATING FIX...
-  Refreshing state in-memory...
-  ─────────────────────────────────
-  Terraform will perform the following actions:
+    if (state.editor && session.starter_code) {
+      state.editor.setValue(session.starter_code);
+    }
 
-    # local_file.signal will be created
-    + resource "local_file" "signal" {
-        + content  = "SYSTEM ONLINE"
-        + filename = "signal.txt"
+    state.ws = api.connectWebSocket(session.ws_url, {
+      onMessage: handleTerraformFrame,
+      onClose: () => console.log('[WS] disconnected'),
+      onError: (e) => console.error('[WS] error', e),
+    });
+
+    // Keepalive ping every 30s
+    setInterval(() => api.ping(), 30000);
+  } catch (err) {
+    console.error('Failed to create session:', err);
+    appendTerminalLine(`ERROR: Could not connect to backend — ${err.message}\n`);
+    appendTerminalLine('Running in offline mode (validation only).\n');
+  }
+}
+
+function handleTerraformFrame(frame) {
+  if (frame.type === 'output') {
+    appendTerminalLine(frame.line);
+    return;
+  }
+
+  if (frame.type === 'done') {
+    state.commandInFlight = false;
+    const { command, result } = frame;
+
+    if (command === 'init') {
+      if (result.success) {
+        state.phase = 'inited';
+        setBtn('btn-init', 'done');
+        document.querySelector('#btn-init .btn-label').textContent = '✓ INITIALIZED';
+        setBtn('btn-plan', 'active');
+        addXP(10);
+        queueMessages(dialogue.onInit, 1200);
+      } else {
+        state.phase = 'idle';
+        setBtn('btn-init', 'active');
+        appendTerminalLine('\n✗ Init failed. Check output above.\n');
       }
+    }
 
-  Plan: 1 to add, 0 to change, 0 to destroy.
-  ─────────────────────────────────
-  ✓ Simulation complete. Safe to execute.`,
+    if (command === 'plan') {
+      if (result.success) {
+        state.phase = 'planned';
+        state.planPassed = true;
+        setBtn('btn-plan', 'done');
+        document.querySelector('#btn-plan .btn-label').textContent = '✓ SIMULATED';
+        setBtn('btn-apply', 'active');
+        addXP(20);
+        mapToPlanned();
+        queueMessages(dialogue.onPlanSuccess, 1200);
+      } else {
+        state.failAttempts++;
+        state.phase = 'planned_fail';
+        state.chaosTriggered = true;
 
-  apply: `▶ EXECUTING FIX...
-  local_file.signal: Creating...
-  local_file.signal: Writing content...
-  local_file.signal: Verifying checksum...
-  local_file.signal: Creation complete [id=signal.txt]
-  ─────────────────────────────────
-  Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
-  ✓ SYSTEM ONLINE`,
+        // Determine chaos from error summary
+        const errors = result.errors || [];
+        const summary = errors[0]?.summary || 'Plan failed with invalid configuration.';
+        let chaosDelta = errors.length > 0 ? 10 : 5;
+        if (state.failAttempts === 2) chaosDelta = Math.round(chaosDelta * 1.5);
+        if (state.failAttempts >= 3)  chaosDelta = Math.round(chaosDelta * 2);
 
-  destroy: `▶ DECOMMISSIONING...
-  local_file.signal: Destroying...
-  local_file.signal: Reading state prior to deletion...
-  local_file.signal: Deletion complete [id=signal.txt]
-  ─────────────────────────────────
-  Destroy complete! Resources: 0 added, 0 changed, 1 destroyed.
-  ✓ Infrastructure clean.`,
+        setChaos(state.chaos + chaosDelta, summary);
+        appendTerminalLine(`\n✗ Plan failed. Fix your configuration and re-run SIMULATE FIX.\n`);
+        queueMessages(dialogue.onPlanFail, 1200);
+      }
+    }
 
-  chaos: `▶ EXECUTING FIX...
-  WARNING: No plan found in state.
-  ─────────────────────────────────
-  ERROR: Attempted apply without simulation.
-  This action has been logged to the incident tracker.
+    if (command === 'apply') {
+      if (result.success && result.mission_success) {
+        state.phase = 'applied';
+        setBtn('btn-apply', 'done');
+        document.querySelector('#btn-apply .btn-label').textContent = '✓ EXECUTED';
+        document.getElementById('btn-destroy').style.display = 'inline-block';
+        mapToApplied();
+        addXP(50);
+        queueMessages(dialogue.onApply, 1200);
+      } else if (result.success && !result.mission_success) {
+        // Apply succeeded but wrong resource attributes
+        appendTerminalLine('\n⚠ Apply succeeded but mission conditions not met. Check filename and content.\n');
+        setBtn('btn-apply', 'active');
+      } else {
+        appendTerminalLine('\n✗ Apply failed. Check output above.\n');
+        setBtn('btn-apply', 'active');
+      }
+    }
 
-  CHAOS SCORE: +25
-  ─────────────────────────────────
-  ✗ Apply aborted. Run SIMULATE FIX first.`,
-};
+    if (command === 'destroy') {
+      state.phase = 'destroyed';
+      setChaos(0);
+      mapToDestroyed();
+      addXP(50);
+      queueMessages(dialogue.onDestroy, 1200);
+      setTimeout(showWarRoom, 3500);
+    }
+  }
+}
 
 // ═══════════════════════════════════════════════════════
 // NPC DIALOGUE
@@ -217,8 +272,16 @@ function queueMessages(arr, baseDelay = 1500) {
 // TERMINAL
 // ═══════════════════════════════════════════════════════
 
+function appendTerminalLine(line) {
+  const out = document.getElementById('terminal-output');
+  const cursor = document.getElementById('terminal-cursor');
+  out.insertBefore(document.createTextNode(line), cursor);
+  out.scrollTop = out.scrollHeight;
+}
+
 let termQueue = Promise.resolve();
 
+// Kept for NPC/flavor text only — real terraform output uses appendTerminalLine
 function streamTerminal(text, speed = 8) {
   return new Promise(resolve => {
     termQueue = termQueue.then(() => new Promise(r => {
@@ -353,203 +416,69 @@ function setBtn(id, state) {
 }
 
 // ═══════════════════════════════════════════════════════
-// VALIDATOR
-// ═══════════════════════════════════════════════════════
-
-function validateCode(code) {
-  const hasBlock    = /resource\s+"local_file"\s+"signal"/.test(code);
-  const hasFilename = /filename\s*=\s*"signal\.txt"/.test(code);
-  const hasContent  = /content\s*=\s*"SYSTEM ONLINE"/.test(code);
-
-  // Detect specific wrong values (something was typed but it's wrong)
-  const filenameAttr   = code.match(/filename\s*=\s*"([^"]*)"/);
-  const contentAttr    = code.match(/content\s*=\s*"([^"]*)"/);
-  const filenameVal    = filenameAttr ? filenameAttr[1] : null;
-  const contentVal     = contentAttr  ? contentAttr[1]  : null;
-  const filenameEmpty  = filenameVal === '' || filenameVal === null;
-  const contentEmpty   = contentVal  === '' || contentVal  === null;
-  const filenameWrong  = !filenameEmpty && !hasFilename;
-  const contentWrong   = !contentEmpty  && !hasContent;
-
-  // Build specific error reason
-  let reason = null;
-  if (!hasBlock) {
-    reason = 'missing_block';
-  } else if (filenameEmpty && contentEmpty) {
-    reason = 'both_empty';
-  } else if (filenameEmpty) {
-    reason = 'filename_empty';
-  } else if (contentEmpty) {
-    reason = 'content_empty';
-  } else if (filenameWrong && contentWrong) {
-    reason = 'both_wrong';
-  } else if (filenameWrong) {
-    reason = 'filename_wrong';
-  } else if (contentWrong) {
-    reason = 'content_wrong';
-  }
-
-  return { hasBlock, hasFilename, hasContent, valid: hasBlock && hasFilename && hasContent, reason, filenameVal, contentVal };
-}
-
-// ═══════════════════════════════════════════════════════
 // GAME ACTIONS
 // ═══════════════════════════════════════════════════════
 
 async function handleInit() {
-  if (state.phase !== 'idle') return;
+  if (state.phase !== 'idle' || state.commandInFlight) return;
+
+  if (!state.sessionId) {
+    appendTerminalLine('ERROR: No backend session. Refresh the page.\n');
+    return;
+  }
+
+  state.commandInFlight = true;
   state.phase = 'initializing';
-  setBtn('btn-init', 'done');
-  document.querySelector('#btn-init .btn-label').textContent = '✓ INITIALIZED';
-
+  setBtn('btn-init', 'locked');
   clearTerminal();
-  streamTerminal(T.init, 7);
+  appendTerminalLine('▶ INITIALIZING...\n');
 
-  await delay(2000);
-
-  state.phase = 'inited';
-  setBtn('btn-plan', 'active');
-  addXP(10);
-  queueMessages(dialogue.onInit, 1200);
+  api.sendRun('init');
   saveState();
 }
 
 async function handlePlan() {
-  if (state.phase !== 'inited' && state.phase !== 'planned_fail') return;
+  if ((state.phase !== 'inited' && state.phase !== 'planned_fail') || state.commandInFlight) return;
   if (!document.getElementById('btn-plan').classList.contains('active')) return;
+  if (!state.sessionId) return;
 
-  const code = state.editor ? state.editor.getValue() : '';
-  const result = validateCode(code);
-
+  const hcl = state.editor ? state.editor.getValue() : '';
+  state.commandInFlight = true;
   clearTerminal();
+  appendTerminalLine('▶ SIMULATING FIX...\n');
 
-  if (result.valid) {
-    streamTerminal(T.planSuccess, 6);
-    await delay(1600);
-    state.phase = 'planned';
-    state.planPassed = true;
-    setBtn('btn-plan', 'done');
-    document.querySelector('#btn-plan .btn-label').textContent = '✓ SIMULATED';
-    setBtn('btn-apply', 'active');
-    addXP(20);
-    mapToPlanned();
-    queueMessages(dialogue.onPlanSuccess, 1200);
-  } else {
-    // ── Diagnose what's wrong and scale chaos accordingly ──
-    state.failAttempts++;
-    state.phase = 'planned_fail';
-
-    const { reason, filenameVal, contentVal } = result;
-    const failCount = state.failAttempts;
-
-    // Chaos scaling: empty fields = small spike, wrong values = medium,
-    // repeated failures compound, but cap per-failure at 20
-    let chaosDelta = 0;
-    let terminalError = '';
-    let ctoLine = '';
-    let internLine = null;
-
-    if (reason === 'both_empty') {
-      chaosDelta   = 5;
-      terminalError = buildPlanError('filename and content are both empty.', 'Fill in both values before running a plan.');
-      ctoLine       = "Empty fields. You ran a plan on a blank config. Read the mission parameters.";
-    } else if (reason === 'filename_empty') {
-      chaosDelta   = 5;
-      terminalError = buildPlanError('filename is empty.', 'Expected: filename = "signal.txt"');
-      ctoLine       = "You left filename blank. The file needs a name. That's not optional.";
-    } else if (reason === 'content_empty') {
-      chaosDelta   = 5;
-      terminalError = buildPlanError('content is empty.', 'Expected: content = "SYSTEM ONLINE"');
-      ctoLine       = "Content is empty. What exactly is this file supposed to say?";
-      internLine    = "psst... it literally tells you in the comments above";
-    } else if (reason === 'filename_wrong') {
-      chaosDelta   = 10;
-      terminalError = buildPlanError(`filename = "${filenameVal}" is not the expected artifact.`, 'Expected: filename = "signal.txt"');
-      ctoLine       = `"${filenameVal}" is not the signal file. Check the mission parameters.`;
-    } else if (reason === 'content_wrong') {
-      chaosDelta   = 10;
-      terminalError = buildPlanError(`content = "${contentVal}" does not match the required signal.`, 'Expected: content = "SYSTEM ONLINE"');
-      ctoLine       = `The content is wrong. "${contentVal}" means nothing to this system.`;
-      internLine    = "the comments literally spell it out lol";
-    } else if (reason === 'both_wrong') {
-      chaosDelta   = 15;
-      terminalError = buildPlanError(`filename "${filenameVal}" and content "${contentVal}" are both incorrect.`, 'Check mission parameters for expected values.');
-      ctoLine       = "Both values wrong. Did you read the mission parameters at the top of the file?";
-    } else if (reason === 'missing_block') {
-      chaosDelta   = 15;
-      terminalError = buildPlanError('No local_file resource block found.', 'The resource block must exist before any attributes can be validated.');
-      ctoLine       = "There's no resource block. You need to declare what you're creating.";
-    }
-
-    // Compound chaos on repeated failures
-    if (failCount === 2) chaosDelta = Math.round(chaosDelta * 1.5);
-    if (failCount >= 3)  chaosDelta = Math.round(chaosDelta * 2);
-
-    if (chaosDelta > 0) {
-      state.chaosTriggered = true;
-      // Build a human-readable label for the war room
-      const reasonLabels = {
-        both_empty:     'Ran terraform plan with filename and content left blank.',
-        filename_empty: 'Ran terraform plan with filename left blank.',
-        content_empty:  'Ran terraform plan with content left blank.',
-        filename_wrong: `Ran terraform plan with wrong filename: "${filenameVal}".`,
-        content_wrong:  `Ran terraform plan with wrong content: "${contentVal}".`,
-        both_wrong:     `Ran terraform plan with both values wrong (filename: "${filenameVal}", content: "${contentVal}").`,
-        missing_block:  'Ran terraform plan with no resource block defined.',
-      };
-      setChaos(state.chaos + chaosDelta, reasonLabels[reason] || 'Plan failed with invalid configuration.');
-    }
-
-    streamTerminal(terminalError, 6);
-    await delay(1600);
-
-    const msgs = [{ char: 'CTO', text: ctoLine }];
-    if (internLine) msgs.push({ char: 'INTERN', text: internLine });
-    queueMessages(msgs, 1200);
-  }
+  api.sendRun('plan', hcl);
   saveState();
 }
 
-function buildPlanError(problem, hint) {
-  return `▶ SIMULATING FIX...
-  Refreshing state in-memory...
-  ─────────────────────────────────
-  ERROR: Validation failed.
-
-  Problem : ${problem}
-  Hint    : ${hint}
-
-  Plan: 0 to add. Aborted.
-  ─────────────────────────────────
-  ✗ Fix your configuration and re-run SIMULATE FIX.`;
-}
-
 async function handleApply() {
-  if (!document.getElementById('btn-apply').classList.contains('active')) return;
+  if (!document.getElementById('btn-apply').classList.contains('active') || state.commandInFlight) return;
+  if (!state.sessionId) return;
 
   if (!state.planPassed) {
-    // CHAOS EVENT
+    // CHAOS EVENT — apply without plan
     state.chaosTriggered = true;
     setChaos(state.chaos + 25, 'Executed terraform apply without running terraform plan first.');
     clearTerminal();
-    streamTerminal(T.chaos, 6);
-    await delay(1500);
+    appendTerminalLine('▶ EXECUTING FIX...\n');
+    appendTerminalLine('WARNING: No plan found in state.\n');
+    appendTerminalLine('─────────────────────────────────\n');
+    appendTerminalLine('ERROR: Attempted apply without simulation.\n');
+    appendTerminalLine('This action has been logged to the incident tracker.\n');
+    appendTerminalLine('\nCHAOS SCORE: +25\n');
+    appendTerminalLine('─────────────────────────────────\n');
+    appendTerminalLine('✗ Apply aborted. Run SIMULATE FIX first.\n');
     queueMessages(dialogue.onChaos, 1200);
     return;
   }
 
+  const hcl = state.editor ? state.editor.getValue() : '';
+  state.commandInFlight = true;
   clearTerminal();
-  streamTerminal(T.apply, 6);
-  await delay(3200);
+  appendTerminalLine('▶ EXECUTING FIX...\n');
+  setBtn('btn-apply', 'locked');
 
-  state.phase = 'applied';
-  setBtn('btn-apply', 'done');
-  document.querySelector('#btn-apply .btn-label').textContent = '✓ EXECUTED';
-
-  document.getElementById('btn-destroy').style.display = 'inline-block';
-  mapToApplied();
-  addXP(50);
-  queueMessages(dialogue.onApply, 1200);
+  api.sendRun('apply', hcl);
   saveState();
 }
 
@@ -559,21 +488,15 @@ function handleDestroyClick() {
 }
 
 async function confirmDestroy() {
+  if (state.commandInFlight) return;
   document.getElementById('decommission-confirm').classList.remove('visible');
   document.getElementById('btn-destroy').style.display = 'none';
 
+  state.commandInFlight = true;
   clearTerminal();
-  streamTerminal(T.destroy, 6);
-  await delay(2200);
+  appendTerminalLine('▶ DECOMMISSIONING...\n');
 
-  state.phase = 'destroyed';
-  setChaos(0);
-  mapToDestroyed();
-  addXP(50);
-  queueMessages(dialogue.onDestroy, 1200);
-
-  await delay(3500);
-  showWarRoom();
+  api.sendRun('destroy');
   saveState();
 }
 
@@ -643,14 +566,23 @@ function restartGame() {
 // MONACO EDITOR
 // ═══════════════════════════════════════════════════════
 
-const STARTER_CODE = `# ─────────────────────────────────────────────
-# MISSION PARAMETERS — READ BEFORE YOU CODE
-# ─────────────────────────────────────────────
-# Resource type : local_file
-# Resource name : signal
-# filename      : signal.txt
-# content       : SYSTEM ONLINE
-# ─────────────────────────────────────────────
+const STARTER_CODE = `terraform {
+  required_providers {
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.5"
+    }
+  }
+}
+
+# MISSION PARAMETERS
+# ==================
+# The signal artifact has gone missing from production.
+# Recreate it using a local_file resource.
+#
+# Required:
+#   filename = "signal.txt"
+#   content  = "SYSTEM ONLINE"
 
 resource "local_file" "signal" {
   filename = ""
@@ -1025,6 +957,9 @@ window.addEventListener('load', () => {
   const out = document.getElementById('terminal-output');
   const cursor = document.getElementById('terminal-cursor');
   out.insertBefore(document.createTextNode('terraformageddon v1.0.0 — ready\n$ '), cursor);
+
+  // Connect to backend and set up session (non-blocking — game continues if it fails)
+  initSession();
 
   // Step 1: First two SYSTEM messages stream in as toasts (sets the scene)
   setTimeout(() => {

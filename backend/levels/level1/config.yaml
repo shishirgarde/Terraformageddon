@@ -1,0 +1,27 @@
+id: level1
+title: "Signal Missing"
+difficulty: 1
+
+allowed_providers:
+  - registry.terraform.io/hashicorp/local
+
+workspace_seed_files: []
+
+success_condition:
+  type: resource_exists
+  resource_address: "local_file.signal"
+  required_attributes:
+    filename: "signal.txt"
+    content: "SYSTEM ONLINE"
+
+xp:
+  init: 10
+  plan_success: 20
+  apply_success: 50
+  destroy_success: 50
+  chaos_penalty_per_event: -10
+
+chaos_triggers:
+  - condition: plan_fail_count >= 3
+    chaos_delta: 15
+    reason: "Three failed plans in a row. The CTO is drafting a PIP."

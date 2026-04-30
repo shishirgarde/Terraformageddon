@@ -1,0 +1,22 @@
+terraform {
+  required_providers {
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.5"
+    }
+  }
+}
+
+# MISSION PARAMETERS
+# ==================
+# The signal artifact has gone missing from production.
+# Recreate it using a local_file resource.
+#
+# Required:
+#   filename = "signal.txt"
+#   content  = "SYSTEM ONLINE"
+
+resource "local_file" "signal" {
+  filename = ""
+  content  = ""
+}
