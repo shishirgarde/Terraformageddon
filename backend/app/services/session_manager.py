@@ -85,7 +85,11 @@ class SessionManager:
     def _create_container(self, workspace_path: Path) -> docker.models.containers.Container:
         client = self._get_docker()
         workspace_host = str(workspace_path.resolve())
-        return client.containers.run(
+
+        # Ensure workspace is writable by any container user
+        workspace_path.chmod(0o777)
+
+        container = client.containers.run(
             image=settings.sandbox_image,
             command="sleep infinity",
             detach=True,
@@ -96,12 +100,18 @@ class SessionManager:
             cpu_quota=25000,
             pids_limit=64,
             network_disabled=True,
-            security_opt=["no-new-privileges:true"],
-            cap_drop=["ALL"],
-            tmpfs={"/tmp": "size=32m"},
             environment={"TF_CLI_ARGS": "-no-color", "TF_IN_AUTOMATION": "1"},
             working_dir="/workspace",
         )
+
+        # Verify the container actually started
+        container.reload()
+        if container.status != "running":
+            logs = container.logs().decode("utf-8", errors="replace")
+            container.remove(force=True)
+            raise RuntimeError(f"Container failed to start. Logs: {logs}")
+
+        return container
 
     async def terminate_session(self, session_id: str):
         session = self._sessions.pop(session_id, None)

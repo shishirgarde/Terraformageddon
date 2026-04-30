@@ -85,6 +85,10 @@ async def run_terraform(
     loop = asyncio.get_event_loop()
 
     def _exec():
+        container.reload()
+        if container.status != "running":
+            logs = container.logs().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Container is not running (status: {container.status}). Logs: {logs}")
         exec_result = container.exec_run(
             cmd,
             workdir="/workspace",
