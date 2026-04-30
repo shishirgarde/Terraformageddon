@@ -11,9 +11,9 @@ from app.schemas.session import TerraformResult, TerraformError
 JSON_COMMANDS = {"plan", "apply"}
 # terraform destroy doesn't support -json in older versions; use -auto-approve only
 DESTROY_FLAGS = ["-auto-approve"]
-PLAN_FLAGS = ["-json", "-out=tfplan"]
+PLAN_FLAGS = ["-json"]
 APPLY_FLAGS = ["-json", "-auto-approve"]
-INIT_FLAGS = ["-no-color"]
+INIT_FLAGS = ["-no-color", "-upgrade"]
 
 
 def _build_terraform_cmd(command: str) -> list[str]:
