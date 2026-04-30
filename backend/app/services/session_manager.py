@@ -65,6 +65,11 @@ class SessionManager:
         workspace_path = Path(settings.workspace_base_dir) / session_id / "workspace"
         workspace_path.mkdir(parents=True, exist_ok=True)
 
+        # Write permissive terraformrc so providers download directly from registry
+        (workspace_path / ".terraformrc").write_text(
+            'provider_installation {\n  direct {}\n}\n'
+        )
+
         # Seed level files into workspace
         for filename, content in get_workspace_seed_files(level_id).items():
             (workspace_path / filename).write_text(content)
@@ -99,8 +104,11 @@ class SessionManager:
             cpu_period=100000,
             cpu_quota=25000,
             pids_limit=64,
-            network_disabled=True,
-            environment={"TF_CLI_ARGS": "-no-color", "TF_IN_AUTOMATION": "1"},
+            environment={
+                "TF_CLI_ARGS": "-no-color",
+                "TF_IN_AUTOMATION": "1",
+                "TF_CLI_CONFIG_FILE": "/workspace/.terraformrc",
+            },
             working_dir="/workspace",
         )
 
