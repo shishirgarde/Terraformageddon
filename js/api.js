@@ -1,4 +1,7 @@
-const API_BASE = 'http://localhost:8000';
+// Auto-detect backend URL: same host as the page, port 8000
+// Override by setting window.API_BASE before this script loads
+const API_BASE = window.API_BASE ||
+  `${location.protocol}//${location.hostname}:8000`;
 
 const api = (() => {
   let _sessionId = null;
