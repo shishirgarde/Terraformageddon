@@ -91,8 +91,7 @@ class SessionManager:
 
         container = client.containers.run(
             image=settings.sandbox_image,
-            entrypoint=["sleep", "infinity"],
-            command=[],
+            entrypoint=["/bin/sh", "-c", "sleep infinity"],
             detach=True,
             volumes={workspace_host: {"bind": "/workspace", "mode": "rw"}},
             mem_limit="256m",
