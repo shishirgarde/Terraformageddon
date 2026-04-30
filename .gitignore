@@ -1,0 +1,15 @@
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+backend/.env
+
+# Terraform session workspaces
+/tmp/tg-sessions/
+
+# OS
+.DS_Store
+Thumbs.db
