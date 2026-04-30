@@ -70,7 +70,12 @@ class SessionManager:
             'provider_installation {\n  direct {}\n}\n'
         )
 
-        # Seed level files into workspace
+        # Pre-seed main.tf from the level template so terraform init sees the
+        # required_providers block and installs the correct providers + lock file
+        from app.services.level_loader import get_starter_code
+        (workspace_path / "main.tf").write_text(get_starter_code(level_id))
+
+        # Seed any additional level workspace files
         for filename, content in get_workspace_seed_files(level_id).items():
             (workspace_path / filename).write_text(content)
 
