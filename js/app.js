@@ -116,9 +116,16 @@ function handleTerraformFrame(frame) {
         addXP(50);
         queueMessages(dialogue.onApply, 1200);
       } else if (result.success && !result.mission_success) {
-        // Apply succeeded but wrong resource attributes
-        appendTerminalLine('\n⚠ Apply succeeded but mission conditions not met. Check filename and content.\n');
+        // Applied but wrong filename/content — chaos event
+        state.chaosTriggered = true;
+        setChaos(state.chaos + 15, 'Applied wrong resource: filename or content did not match mission parameters.');
+        appendTerminalLine('\n⚠ Apply succeeded but signal artifact not restored.\n');
+        appendTerminalLine('Check filename = "signal.txt" and content = "SYSTEM ONLINE"\n');
         setBtn('btn-apply', 'active');
+        queueMessages([
+          { char: 'CTO', text: 'You applied the wrong file. That is not the signal artifact.' },
+          { char: 'INTERN', text: 'bro the comments literally say signal.txt...' },
+        ], 1200);
       } else {
         appendTerminalLine('\n✗ Apply failed. Check output above.\n');
         setBtn('btn-apply', 'active');

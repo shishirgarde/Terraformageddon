@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 import yaml
 
@@ -39,23 +38,17 @@ def check_success_condition(workspace_path: Path, level_id: str) -> bool:
     if condition.get("type") != "resource_exists":
         return False
 
-    state_file = workspace_path / "terraform.tfstate"
-    if not state_file.exists():
-        return False
-
-    try:
-        state = json.loads(state_file.read_text())
-    except (json.JSONDecodeError, OSError):
-        return False
-
-    addr = condition["resource_address"]
-    rtype, rname = addr.split(".", 1)
     required_attrs = condition.get("required_attributes", {})
+    expected_filename = required_attrs.get("filename")
+    expected_content = required_attrs.get("content")
 
-    for resource in state.get("resources", []):
-        if resource.get("type") == rtype and resource.get("name") == rname:
-            for instance in resource.get("instances", []):
-                attrs = instance.get("attributes", {})
-                if all(attrs.get(k) == v for k, v in required_attrs.items()):
-                    return True
-    return False
+    if not expected_filename or not expected_content:
+        return False
+
+    # Check the actual file on disk — most reliable for local_file resources
+    actual_file = workspace_path / expected_filename
+    if not actual_file.exists():
+        return False
+
+    actual_content = actual_file.read_text()
+    return actual_content.strip() == expected_content.strip()
