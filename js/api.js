@@ -90,6 +90,18 @@ const api = (() => {
     _ws.send(JSON.stringify(msg));
   }
 
+  function sendSave(hclContent) {
+    if (!_ws || _ws.readyState !== WebSocket.OPEN) return;
+    _ws.send(JSON.stringify({ type: 'save', hcl_content: hclContent }));
+  }
+
+  function sendCmd(line, hclContent = null) {
+    if (!_ws || _ws.readyState !== WebSocket.OPEN) return;
+    const msg = { type: 'cmd', line };
+    if (hclContent !== null) msg.hcl_content = hclContent;
+    _ws.send(JSON.stringify(msg));
+  }
+
   function ping() {
     if (_ws && _ws.readyState === WebSocket.OPEN) {
       _ws.send(JSON.stringify({ type: 'ping' }));
@@ -124,6 +136,8 @@ const api = (() => {
     runCommand,
     connectWebSocket,
     sendRun,
+    sendSave,
+    sendCmd,
     ping,
     deleteSession,
     saveProgress,

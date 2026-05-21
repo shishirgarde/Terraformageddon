@@ -1,0 +1,25 @@
+terraform {
+  required_providers {
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.5"
+    }
+  }
+}
+
+# MISSION PARAMETERS
+# ==================
+# The app-config service can't boot. The config/ directory is gone,
+# and so is app.conf. Recreate it from scratch.
+#
+# Required resource: local_file
+# Required attributes:
+#   filename = "config/app.conf"
+#   content  = "mode=production"
+#
+# No buttons this time. Drive the mission from the terminal:
+#   terraform init      # download providers
+#   terraform validate  # check syntax
+#   terraform plan      # simulate
+#   terraform apply     # execute
+#   terraform destroy   # clean teardown

@@ -1,18 +1,20 @@
+# Docker is used ONLY to build and run isolated per-user Terraform sandbox
+# containers. The FastAPI backend runs natively on the host (uvicorn) and
+# talks to the Docker daemon via the local socket / named pipe to spawn one
+# sandbox container per session.
+#
+# Usage:
+#   docker compose build sandbox             # build the sandbox image once
+#   docker compose build sandbox --no-cache  # force rebuild
+#
+# The `sandbox` service is never started by compose — the backend creates
+# containers from this image on demand. The `profiles: ["build-only"]` guard
+# ensures `docker compose up` will not try to run it.
+
 services:
-  backend:
+  sandbox:
+    image: terraformageddon-sandbox:latest
     build:
-      context: ./backend
+      context: ./backend/docker/terraform-sandbox
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /tmp/tg-sessions:/tmp/tg-sessions
-      - ./backend:/app
-    environment:
-      - AUTH_DISABLED=true
-      - CORS_ORIGINS=["http://localhost:5500","http://127.0.0.1:5500"]
-      - WORKSPACE_BASE_DIR=/tmp/tg-sessions
-    working_dir: /app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    restart: unless-stopped
+    profiles: ["build-only"]

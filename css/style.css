@@ -547,6 +547,66 @@
     50%       { opacity: 0; }
   }
 
+  /* ── LEVEL 2: interactive terminal & editor-only panel ── */
+  body.level2 #editor-panel {
+    /* No action buttons row; editor stretches full height */
+  }
+
+  body.level2 #terminal-output {
+    display: flex;
+    flex-direction: column;
+    cursor: text;
+  }
+
+  body.level2 #terminal-scrollback {
+    white-space: pre-wrap;
+    word-break: break-word;
+    flex: 0 0 auto;
+  }
+
+  body.level2 #terminal-prompt-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding-top: 2px;
+    flex: 0 0 auto;
+  }
+
+  body.level2 .terminal-prompt-sigil {
+    color: var(--green, #00ff9f);
+    flex-shrink: 0;
+    user-select: none;
+  }
+
+  body.level2 #terminal-input {
+    flex: 1;
+    outline: none;
+    color: #e6edf3;
+    caret-color: var(--green, #00ff9f);
+    min-height: 1.6em;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  body.level2 #terminal-input.locked {
+    opacity: 0.5;
+    caret-color: transparent;
+    cursor: not-allowed;
+  }
+
+  body.level2 #terminal-input:empty::after {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 13px;
+    background: var(--green, #00ff9f);
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+  }
+
   /* ── BRIEFING MODAL ── */
   #briefing-overlay {
     position: fixed;

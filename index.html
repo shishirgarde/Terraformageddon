@@ -302,7 +302,7 @@
   <div style="max-width:1200px;margin:0 auto;">
     <div class="sec-head" style="margin-bottom:40px;">
       <h2>Mission <span>Board</span></h2>
-      <p>1 of 4 missions active — complete Level 1 to unlock clearance</p>
+      <p>2 of 4 missions active — complete Level 2 to unlock clearance</p>
     </div>
     <div class="mission-grid">
 
@@ -326,17 +326,22 @@
         </div>
       </a>
 
-      <div class="mcard locked">
+      <a href="level2.html" class="mcard active-m">
         <div class="maccent ma-orange"></div>
         <div class="mbody">
-          <div class="mtop"><div class="mlevel">Level 02</div><div class="mstatus ms-soon">COMING SOON</div></div>
-          <div class="mincident">P1 · Config Drift Detected</div>
-          <div class="mtitle">Ghost Variable</div>
-          <div class="mdesc">A Terraform variable is referenced but never declared. The pipeline is failing silently. Track down the drift and declare it before it cascades.</div>
-          <div class="mtags"><span class="mtag">variables</span><span class="mtag">outputs</span><span class="mtag">tfvars</span></div>
-          <div class="mfooter"><div class="mxp">Reward: <strong>+180 XP</strong></div><div class="mcta">LOCKED</div></div>
+          <div class="mtop"><div class="mlevel">Level 02</div><div class="mstatus ms-active">● ACTIVE</div></div>
+          <div class="mincident">P1 · Service Can't Boot</div>
+          <div class="mtitle">Missing Config</div>
+          <div class="mdesc">The app service is stuck on boot — config/app.conf is gone. Only the provider block is filled in. Write the resource from scratch, then drive the mission with real terraform commands in the terminal.</div>
+          <div class="mtags">
+            <span class="mtag">local_file</span>
+            <span class="mtag">paths &amp; subdirs</span>
+            <span class="mtag">terraform validate</span>
+            <span class="mtag">CLI workflow</span>
+          </div>
+          <div class="mfooter"><div class="mxp">Reward: <strong>+180 XP</strong></div><div class="mcta">ENTER MISSION →</div></div>
         </div>
-      </div>
+      </a>
 
       <div class="mcard locked">
         <div class="maccent ma-grey"></div>

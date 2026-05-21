@@ -45,7 +45,7 @@ async def run_command(
     if session.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    allowed_commands = {"init", "plan", "apply", "destroy"}
+    allowed_commands = {"init", "plan", "apply", "destroy", "validate", "fmt"}
     if body.command not in allowed_commands:
         raise HTTPException(status_code=400, detail=f"Command must be one of {allowed_commands}")
 

@@ -1,12 +1,16 @@
 // ═══════════════════════════════════════════════════════
-// GAME STATE
+// LEVEL 2 — Missing Config
+// Editor starts with only the provider block.
+// Player drives the mission from an interactive terminal.
 // ═══════════════════════════════════════════════════════
 
 const state = {
-  phase: 'idle',       // idle | inited | planned | applied | destroyed
   chaos: 0,
   xp: 0,
+  initDone: false,
   planPassed: false,
+  applyDone: false,
+  destroyDone: false,
   chaosTriggered: false,
   failAttempts: 0,
   chaosEventCount: 0,
@@ -17,6 +21,7 @@ const state = {
   sessionId: null,
   ws: null,
   commandInFlight: false,
+  saveTimer: null,
 };
 
 function initDevIdentity() {
@@ -25,7 +30,6 @@ function initDevIdentity() {
   if (fromQuery) {
     localStorage.setItem('tg_user', fromQuery);
   }
-
   const username = (localStorage.getItem('tg_user') || 'dev-user').trim();
   api.setToken(`username:${username}`);
 }
@@ -42,7 +46,7 @@ function avatarSrc(char) {
 
 async function initSession() {
   try {
-    const session = await api.createSession('level1');
+    const session = await api.createSession('level2');
     state.sessionId = session.session_id;
 
     if (state.editor && session.starter_code) {
@@ -50,106 +54,109 @@ async function initSession() {
     }
 
     state.ws = api.connectWebSocket(session.ws_url, {
-      onMessage: handleTerraformFrame,
+      onMessage: handleFrame,
       onClose: () => console.log('[WS] disconnected'),
       onError: (e) => console.error('[WS] error', e),
     });
 
-    // Keepalive ping every 30s
     setInterval(() => api.ping(), 30000);
   } catch (err) {
     console.error('Failed to create session:', err);
     appendTerminalLine(`ERROR: Could not connect to backend — ${err.message}\n`);
-    appendTerminalLine('Running in offline mode (validation only).\n');
+    appendTerminalLine('Offline mode: terminal commands unavailable.\n');
   }
 }
 
-function handleTerraformFrame(frame) {
+function handleFrame(frame) {
+  if (frame.type === 'saved') {
+    setSaveIndicator('saved');
+    return;
+  }
+
   if (frame.type === 'output') {
     appendTerminalLine(frame.line);
     return;
   }
 
+  if (frame.type === 'started') {
+    return;
+  }
+
   if (frame.type === 'done') {
     state.commandInFlight = false;
+    unlockPrompt();
+
     const { command, result } = frame;
 
     if (command === 'init') {
       if (result.success) {
-        state.phase = 'inited';
-        setBtn('btn-init', 'done');
-        document.querySelector('#btn-init .btn-label').textContent = '✓ INITIALIZED';
-        setBtn('btn-plan', 'active');
-        addXP(10);
+        if (!state.initDone) addXP(10);
+        state.initDone = true;
         queueMessages(dialogue.onInit, 1200);
       } else {
-        state.phase = 'idle';
-        setBtn('btn-init', 'active');
         appendTerminalLine('\n✗ Init failed. Check output above.\n');
       }
     }
 
     if (command === 'plan') {
       if (result.success) {
-        state.phase = 'planned';
+        if (!state.planPassed) addXP(20);
         state.planPassed = true;
-        setBtn('btn-plan', 'done');
-        document.querySelector('#btn-plan .btn-label').textContent = '✓ SIMULATED';
-        setBtn('btn-apply', 'active');
-        addXP(20);
         mapToPlanned();
         queueMessages(dialogue.onPlanSuccess, 1200);
       } else {
         state.failAttempts++;
-        state.phase = 'planned_fail';
         state.chaosTriggered = true;
-
-        // Determine chaos from error summary
         const errors = result.errors || [];
         const summary = errors[0]?.summary || 'Plan failed with invalid configuration.';
         let chaosDelta = errors.length > 0 ? 10 : 5;
         if (state.failAttempts === 2) chaosDelta = Math.round(chaosDelta * 1.5);
         if (state.failAttempts >= 3)  chaosDelta = Math.round(chaosDelta * 2);
-
         setChaos(state.chaos + chaosDelta, summary);
-        appendTerminalLine(`\n✗ Plan failed. Fix your configuration and re-run SIMULATE FIX.\n`);
+        appendTerminalLine('\n✗ Plan failed. Read the error, fix your config, re-run.\n');
         queueMessages(dialogue.onPlanFail, 1200);
       }
     }
 
     if (command === 'apply') {
+      // Chaos: apply before any successful plan
+      if (!state.planPassed && !state.chaosFiredApplyBeforePlan) {
+        state.chaosFiredApplyBeforePlan = true;
+        state.chaosTriggered = true;
+        setChaos(state.chaos + 25, 'Ran terraform apply without ever passing terraform plan.');
+        queueMessages(dialogue.onChaos, 1200);
+      }
+
       if (result.success && result.mission_success) {
-        state.phase = 'applied';
-        setBtn('btn-apply', 'done');
-        document.querySelector('#btn-apply .btn-label').textContent = '✓ EXECUTED';
-        document.getElementById('btn-destroy').style.display = 'inline-block';
+        if (!state.applyDone) addXP(50);
+        state.applyDone = true;
         mapToApplied();
-        addXP(50);
         queueMessages(dialogue.onApply, 1200);
       } else if (result.success && !result.mission_success) {
-        // Applied but wrong filename/content — chaos event
         state.chaosTriggered = true;
         setChaos(state.chaos + 15, 'Applied wrong resource: filename or content did not match mission parameters.');
-        appendTerminalLine('\n⚠ Apply succeeded but signal artifact not restored.\n');
-        appendTerminalLine('Check filename = "signal.txt" and content = "SYSTEM ONLINE"\n');
-        setBtn('btn-apply', 'active');
+        appendTerminalLine('\n⚠ Apply succeeded but config artifact not restored.\n');
+        appendTerminalLine('Check filename = "config/app.conf" and content = "mode=production"\n');
         queueMessages([
-          { char: 'CTO', text: 'You applied the wrong file. That is not the signal artifact.' },
-          { char: 'INTERN', text: 'bro the comments literally say signal.txt...' },
+          { char: 'CTO', text: 'Wrong file. The service is still blind. Read the briefing again.' },
+          { char: 'INTERN', text: 'bro the path literally says config slash app dot conf' },
         ], 1200);
       } else {
         appendTerminalLine('\n✗ Apply failed. Check output above.\n');
-        setBtn('btn-apply', 'active');
       }
     }
 
     if (command === 'destroy') {
-      state.phase = 'destroyed';
-      setChaos(0);
-      mapToDestroyed();
-      addXP(50);
-      queueMessages(dialogue.onDestroy, 1200);
-      setTimeout(showWarRoom, 3500);
+      if (result.success) {
+        if (!state.destroyDone && state.applyDone) addXP(50);
+        state.destroyDone = true;
+        if (state.applyDone) {
+          setChaos(0);
+          mapToDestroyed();
+          queueMessages(dialogue.onDestroy, 1200);
+          setTimeout(showWarRoom, 3500);
+        }
+      }
     }
   }
 }
@@ -160,31 +167,32 @@ function handleTerraformFrame(frame) {
 
 const dialogue = {
   onInit: [
-    { char: 'INTERN', text: "wait... it actually downloaded a provider for a text file??" },
-    { char: 'SYSTEM', text: "Provider ready. The universe is watching." },
+    { char: 'INTERN', text: "wait there's no init button. how am i supposed to —" },
+    { char: 'CTO',    text: "You type it. Like a real engineer. The terminal works." },
+    { char: 'SYSTEM', text: "Provider ready. Workspace initialized." },
   ],
   onPlanSuccess: [
-    { char: 'CTO', text: "You planned before applying. I'm almost proud. Don't ruin it." },
+    { char: 'CTO', text: "Plan looks clean. Don't celebrate yet — apply is the part that breaks production." },
   ],
   onPlanFail: [
-    { char: 'CTO', text: "That's not it. The logs exist for a reason. Try reading them." },
-    { char: 'INTERN', text: "the error literally tells you what it wants. like word for word" },
+    { char: 'CTO',    text: "Read the error. Terraform tells you exactly what's wrong if you actually look." },
+    { char: 'INTERN', text: "is it the comma. it's always the comma" },
   ],
   onChaos: [
-    { char: 'CTO',    text: "You applied without a plan. In production. Let that sink in." },
+    { char: 'CTO',    text: "You applied without planning. No buttons to save you this time." },
     { char: 'INTERN', text: "bro..." },
     { char: 'CTO',    text: "Chaos logged. This goes in the post-mortem. With your name on it." },
   ],
   onApply: [
-    { char: 'SYSTEM', text: "✓ signal.txt created. SYSTEM ONLINE." },
-    { char: 'CTO',    text: "System restored. Now destroy it cleanly. Infrastructure is not a souvenir." },
+    { char: 'SYSTEM', text: "✓ config/app.conf created. APP SERVICE booting." },
+    { char: 'CTO',    text: "Service is back. Now destroy it cleanly. Infrastructure is not a souvenir." },
     { char: 'INTERN', text: "wait we're deleting it?? we just fixed it??" },
     { char: 'CTO',    text: "Terraform doesn't do keepsakes. Destroy it and move on." },
   ],
   onDestroy: [
-    { char: 'SYSTEM', text: "✓ local_file.signal destroyed." },
-    { char: 'CTO',    text: "Clean. No drift. No orphaned resources. This is the baseline, not the achievement." },
-    { char: 'INTERN', text: "okay that was actually kind of terrifying. in a good way" },
+    { char: 'SYSTEM', text: "✓ local_file.app_config destroyed. config/ removed." },
+    { char: 'CTO',    text: "Clean. No drift. No orphaned resources. This is how grown-ups ship." },
+    { char: 'INTERN', text: "okay typing the commands felt kind of badass not gonna lie" },
   ],
 };
 
@@ -209,7 +217,6 @@ function showTyping(char, cb) {
   const cls = charClass(char);
   const msgs = document.getElementById('npc-messages');
 
-  // Add typing indicator into the panel
   const wrap = document.createElement('div');
   wrap.className = 'npc-msg npc-typing-row';
 
@@ -237,7 +244,6 @@ function showTyping(char, cb) {
   msgs.appendChild(wrap);
   msgs.scrollTop = msgs.scrollHeight;
 
-  // Remove typing indicator then fire callback
   const duration = 700 + Math.random() * 500;
   setTimeout(() => {
     if (wrap.parentNode) msgs.removeChild(wrap);
@@ -247,7 +253,6 @@ function showTyping(char, cb) {
 
 function appendMessage(char, text) {
   const cls = charClass(char);
-
   const msgs = document.getElementById('npc-messages');
   const wrap = document.createElement('div');
   wrap.className = 'npc-msg';
@@ -287,47 +292,158 @@ function queueMessages(arr, baseDelay = 1500) {
 }
 
 // ═══════════════════════════════════════════════════════
-// TERMINAL
+// INTERACTIVE TERMINAL
 // ═══════════════════════════════════════════════════════
 
+const termHistory = [];
+let termHistoryIndex = -1;
+
 function appendTerminalLine(line) {
+  const scroll = document.getElementById('terminal-scrollback');
+  scroll.appendChild(document.createTextNode(line));
   const out = document.getElementById('terminal-output');
-  const cursor = document.getElementById('terminal-cursor');
-  out.insertBefore(document.createTextNode(line), cursor);
   out.scrollTop = out.scrollHeight;
 }
 
-let termQueue = Promise.resolve();
+function lockPrompt() {
+  const input = document.getElementById('terminal-input');
+  input.setAttribute('contenteditable', 'false');
+  input.classList.add('locked');
+}
 
-// Kept for NPC/flavor text only — real terraform output uses appendTerminalLine
-function streamTerminal(text, speed = 8) {
-  return new Promise(resolve => {
-    termQueue = termQueue.then(() => new Promise(r => {
-      const out = document.getElementById('terminal-output');
-      const cursor = document.getElementById('terminal-cursor');
-      let i = 0;
-      const chars = text.split('');
-      const tick = setInterval(() => {
-        if (i >= chars.length) {
-          clearInterval(tick);
-          out.insertBefore(document.createTextNode('\n'), cursor);
-          out.scrollTop = out.scrollHeight;
-          setTimeout(() => { resolve(); r(); }, 200);
-          return;
-        }
-        out.insertBefore(document.createTextNode(chars[i]), cursor);
-        out.scrollTop = out.scrollHeight;
-        i++;
-      }, speed);
-    }));
+function unlockPrompt() {
+  const input = document.getElementById('terminal-input');
+  input.setAttribute('contenteditable', 'true');
+  input.classList.remove('locked');
+  // Re-focus so the player can keep typing
+  input.focus();
+}
+
+function clearScrollback() {
+  document.getElementById('terminal-scrollback').innerHTML = '';
+}
+
+function printHelp() {
+  appendTerminalLine(
+    'Available commands:\n' +
+    '  terraform init           download providers\n' +
+    '  terraform validate       check syntax\n' +
+    '  terraform plan           simulate changes\n' +
+    '  terraform apply          execute (auto-approved)\n' +
+    '  terraform destroy        clean teardown\n' +
+    '  terraform fmt            format the file\n' +
+    '  ls [path]                list files in workspace\n' +
+    '  cat <file>               print file contents\n' +
+    '  clear                    clear terminal\n' +
+    '  help                     show this help\n'
+  );
+}
+
+function submitTerminalLine(rawLine) {
+  const line = (rawLine || '').trim();
+  if (!line) {
+    appendTerminalLine('$ \n');
+    return;
+  }
+
+  termHistory.push(line);
+  termHistoryIndex = termHistory.length;
+
+  // Local-only commands
+  if (line === 'clear') {
+    clearScrollback();
+    return;
+  }
+  if (line === 'help') {
+    appendTerminalLine(`$ ${line}\n`);
+    printHelp();
+    return;
+  }
+
+  if (!state.sessionId || !state.ws) {
+    appendTerminalLine(`$ ${line}\n`);
+    appendTerminalLine('ERROR: no backend session. Refresh the page.\n');
+    return;
+  }
+
+  // Send to backend — backend echoes the prompt line itself
+  state.commandInFlight = true;
+  lockPrompt();
+  const hcl = state.editor ? state.editor.getValue() : null;
+  api.sendCmd(line, hcl);
+}
+
+function initTerminal() {
+  const input = document.getElementById('terminal-input');
+  const out = document.getElementById('terminal-output');
+
+  // Click anywhere in the terminal → focus the input
+  out.addEventListener('click', () => {
+    if (input.getAttribute('contenteditable') !== 'false') input.focus();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (state.commandInFlight) {
+      e.preventDefault();
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const line = input.textContent;
+      input.textContent = '';
+      submitTerminalLine(line);
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (termHistory.length === 0) return;
+      termHistoryIndex = Math.max(0, termHistoryIndex - 1);
+      input.textContent = termHistory[termHistoryIndex] || '';
+      placeCaretEnd(input);
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (termHistory.length === 0) return;
+      termHistoryIndex = Math.min(termHistory.length, termHistoryIndex + 1);
+      input.textContent = termHistory[termHistoryIndex] || '';
+      placeCaretEnd(input);
+      return;
+    }
+
+    if (e.key === 'l' && e.ctrlKey) {
+      e.preventDefault();
+      clearScrollback();
+      return;
+    }
+
+    if (e.key === 'c' && e.ctrlKey) {
+      e.preventDefault();
+      const cur = input.textContent;
+      appendTerminalLine(`$ ${cur}^C\n`);
+      input.textContent = '';
+      return;
+    }
+  });
+
+  // Paste as plain text only
+  input.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    document.execCommand('insertText', false, text.replace(/\n/g, ' '));
   });
 }
 
-function clearTerminal() {
-  const out = document.getElementById('terminal-output');
-  while (out.firstChild && out.firstChild !== document.getElementById('terminal-cursor')) {
-    out.removeChild(out.firstChild);
-  }
+function placeCaretEnd(el) {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
 }
 
 function toggleTerminal() {
@@ -358,17 +474,7 @@ function setChaos(val, reason) {
 function addXP(amount) {
   state.xp += amount;
   document.getElementById('xp-counter').textContent = `XP: ${state.xp}`;
-  if (amount < 0) {
-    flashXP(`${amount} XP — Intel purchased`);
-  }
   saveState();
-}
-
-function flashXP(msg) {
-  const el = document.getElementById('xp-flash');
-  el.textContent = msg;
-  el.style.opacity = '1';
-  setTimeout(() => el.style.opacity = '0', 2500);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -376,46 +482,56 @@ function flashXP(msg) {
 // ═══════════════════════════════════════════════════════
 
 function mapToPlanned() {
-  // Change line to solid grey
-  const line = document.getElementById('dep-line');
-  line.setAttribute('stroke-dasharray', 'none');
+  // Solidify the dependency lines
+  document.getElementById('dep-line').setAttribute('stroke-dasharray', 'none');
+  document.getElementById('dep-line-2').setAttribute('stroke-dasharray', 'none');
 }
 
 function mapToApplied() {
-  const rect = document.getElementById('signal-rect');
-  const label = document.getElementById('signal-label');
-  const status = document.getElementById('signal-status');
-  const line = document.getElementById('dep-line');
+  const dirRect = document.getElementById('config-dir-rect');
+  const dirLabel = document.getElementById('config-dir-label');
+  const dirStatus = document.getElementById('config-dir-status');
+  const fileRect = document.getElementById('config-file-rect');
+  const fileLabel = document.getElementById('config-file-label');
+  const fileStatus = document.getElementById('config-file-status');
+  const line1 = document.getElementById('dep-line');
+  const line2 = document.getElementById('dep-line-2');
   const dot = document.getElementById('map-dot');
 
-  // Transition signal node ghost → solid green
-  rect.setAttribute('fill', 'rgba(0,255,159,0.06)');
-  rect.setAttribute('stroke', '#00ff9f');
-  rect.setAttribute('stroke-dasharray', 'none');
-  rect.setAttribute('filter', 'url(#glow-green)');
-  label.setAttribute('fill', '#00ff9f');
-  status.textContent = '✓';
-  status.setAttribute('fill', '#00ff9f');
+  for (const rect of [dirRect, fileRect]) {
+    rect.setAttribute('fill', 'rgba(0,255,159,0.06)');
+    rect.setAttribute('stroke', '#00ff9f');
+    rect.setAttribute('stroke-dasharray', 'none');
+    rect.setAttribute('filter', 'url(#glow-green)');
+  }
+  dirLabel.setAttribute('fill', '#00ff9f');
+  dirStatus.setAttribute('fill', '#00ff9f');
+  dirStatus.textContent = 'DIRECTORY CREATED';
+  fileLabel.setAttribute('fill', '#00ff9f');
+  fileStatus.setAttribute('fill', '#00ff9f');
+  fileStatus.textContent = '✓';
 
-  // Line → solid green
-  line.setAttribute('stroke', '#00ff9f');
-  line.setAttribute('stroke-dasharray', 'none');
-  line.setAttribute('marker-end', 'url(#arrowhead-green)');
-
+  for (const line of [line1, line2]) {
+    line.setAttribute('stroke', '#00ff9f');
+    line.setAttribute('stroke-dasharray', 'none');
+    line.setAttribute('marker-end', 'url(#arrowhead-green)');
+  }
   dot.classList.add('green');
 
   document.getElementById('map-status').innerHTML =
-    '<span class="ok">SIGNAL RESTORED</span> — system online';
+    '<span class="ok">CONFIG RESTORED</span> — app service online';
 }
 
 function mapToDestroyed() {
-  const signal = document.getElementById('node-signal');
-  const line = document.getElementById('dep-line');
+  const dir = document.getElementById('node-config-dir');
+  const file = document.getElementById('node-config-file');
+  const line1 = document.getElementById('dep-line');
+  const line2 = document.getElementById('dep-line-2');
 
-  signal.style.transition = 'opacity 1s ease';
-  signal.style.opacity = '0';
-  line.style.transition = 'opacity 0.8s ease';
-  line.style.opacity = '0';
+  for (const el of [dir, file, line1, line2]) {
+    el.style.transition = 'opacity 1s ease';
+    el.style.opacity = '0';
+  }
 
   setTimeout(() => {
     document.getElementById('map-status').innerHTML =
@@ -424,160 +540,29 @@ function mapToDestroyed() {
 }
 
 // ═══════════════════════════════════════════════════════
-// BUTTONS
+// SAVE INDICATOR
 // ═══════════════════════════════════════════════════════
 
-function setBtn(id, state) {
-  const btn = document.getElementById(id);
-  btn.classList.remove('active', 'locked', 'done', 'danger');
-  btn.classList.add(state);
-}
-
-// ═══════════════════════════════════════════════════════
-// GAME ACTIONS
-// ═══════════════════════════════════════════════════════
-
-async function handleInit() {
-  if (state.phase !== 'idle' || state.commandInFlight) return;
-
-  if (!state.sessionId) {
-    appendTerminalLine('ERROR: No backend session. Refresh the page.\n');
-    return;
+function setSaveIndicator(stateStr) {
+  const el = document.getElementById('editor-save-indicator');
+  if (!el) return;
+  if (stateStr === 'saving') {
+    el.textContent = '● saving…';
+    el.style.color = 'var(--orange, #ff9060)';
+  } else {
+    el.textContent = '● saved';
+    el.style.color = 'var(--grey, #7d8590)';
   }
-
-  state.commandInFlight = true;
-  state.phase = 'initializing';
-  setBtn('btn-init', 'locked');
-  clearTerminal();
-  appendTerminalLine('▶ INITIALIZING...\n');
-
-  api.sendRun('init');
-  saveState();
 }
 
-async function handlePlan() {
-  if ((state.phase !== 'inited' && state.phase !== 'planned_fail') || state.commandInFlight) return;
-  if (!document.getElementById('btn-plan').classList.contains('active')) return;
-  if (!state.sessionId) return;
-
-  const hcl = state.editor ? state.editor.getValue() : '';
-  state.commandInFlight = true;
-  clearTerminal();
-  appendTerminalLine('▶ SIMULATING FIX...\n');
-
-  api.sendRun('plan', hcl);
-  saveState();
-}
-
-async function handleApply() {
-  if (!document.getElementById('btn-apply').classList.contains('active') || state.commandInFlight) return;
-  if (!state.sessionId) return;
-
-  if (!state.planPassed) {
-    // CHAOS EVENT — apply without plan
-    state.chaosTriggered = true;
-    setChaos(state.chaos + 25, 'Executed terraform apply without running terraform plan first.');
-    clearTerminal();
-    appendTerminalLine('▶ EXECUTING FIX...\n');
-    appendTerminalLine('WARNING: No plan found in state.\n');
-    appendTerminalLine('─────────────────────────────────\n');
-    appendTerminalLine('ERROR: Attempted apply without simulation.\n');
-    appendTerminalLine('This action has been logged to the incident tracker.\n');
-    appendTerminalLine('\nCHAOS SCORE: +25\n');
-    appendTerminalLine('─────────────────────────────────\n');
-    appendTerminalLine('✗ Apply aborted. Run SIMULATE FIX first.\n');
-    queueMessages(dialogue.onChaos, 1200);
-    return;
-  }
-
-  const hcl = state.editor ? state.editor.getValue() : '';
-  state.commandInFlight = true;
-  clearTerminal();
-  appendTerminalLine('▶ EXECUTING FIX...\n');
-  setBtn('btn-apply', 'locked');
-
-  api.sendRun('apply', hcl);
-  saveState();
-}
-
-function handleDestroyClick() {
-  const confirm = document.getElementById('decommission-confirm');
-  confirm.classList.toggle('visible');
-}
-
-async function confirmDestroy() {
-  if (state.commandInFlight) return;
-  document.getElementById('decommission-confirm').classList.remove('visible');
-  document.getElementById('btn-destroy').style.display = 'none';
-
-  state.commandInFlight = true;
-  clearTerminal();
-  appendTerminalLine('▶ DECOMMISSIONING...\n');
-
-  api.sendRun('destroy');
-  saveState();
-}
-
-function cancelDestroy() {
-  document.getElementById('decommission-confirm').classList.remove('visible');
-}
-
-// ═══════════════════════════════════════════════════════
-// WAR ROOM
-// ═══════════════════════════════════════════════════════
-
-function showWarRoom() {
-  const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
-  const mins = Math.floor(elapsed / 60);
-  const secs = elapsed % 60;
-
-  document.getElementById('war-time').textContent =
-    mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-
-  document.getElementById('war-chaos-count').textContent = state.chaosEventCount;
-
-  if (state.chaosEventCount > 0) {
-    document.getElementById('war-chaos-count').classList.add('red');
-    const section = document.getElementById('chaos-event-section');
-    section.classList.add('visible');
-    // Build dynamic reason list
-    const reasonLines = state.chaosReasons
-      .map((r, i) => `${i + 1}. ${r}`)
-      .join('\n');
-    document.getElementById('chaos-event-text').innerHTML =
-      reasonLines.replace(/\n/g, '<br>') + '<br>The CTO has noted this.';
-  }
-
-  // Simulated incident summary (no Claude API for now)
-  const summaries = state.chaosTriggered
-    ? [
-        "The signal artifact was successfully restored after an unauthorized apply attempt triggered a chaos event, requiring manual intervention to stabilize the deployment pipeline.",
-        "Infrastructure was brought back online despite an unplanned execution attempt; the signal file was recreated and cleanly decommissioned following incident review."
-      ]
-    : [
-        "The missing signal artifact was identified, recreated via a properly planned Terraform apply, and subsequently decommissioned in a clean, zero-chaos operation.",
-        "Signal file restoration was completed without incident — the engineer simulated the change before execution and decommissioned the resource on schedule."
-      ];
-
-  const summary = summaries[Math.floor(Math.random() * summaries.length)];
-  document.getElementById('incident-summary-text').textContent = summary;
-
-  // Debrief first — war room card appears when debrief finishes
-  startDebrief();
-}
-
-function showNextMission() {
-  const btn = document.querySelector('.war-btn.secondary');
-  btn.textContent = '[ COMING SOON ]';
-  btn.style.borderColor = 'var(--grey)';
-  btn.style.color = 'var(--grey)';
-  btn.style.opacity = '0.5';
-  btn.style.cursor = 'default';
-}
-
-function restartGame() {
-  localStorage.removeItem('tg_state');
-  location.reload();
+function scheduleAutoSave() {
+  if (!state.ws) return;
+  setSaveIndicator('saving');
+  if (state.saveTimer) clearTimeout(state.saveTimer);
+  state.saveTimer = setTimeout(() => {
+    const hcl = state.editor ? state.editor.getValue() : '';
+    api.sendSave(hcl);
+  }, 400);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -595,21 +580,14 @@ const STARTER_CODE = `terraform {
 
 # MISSION PARAMETERS
 # ==================
-# The signal artifact has gone missing from production.
-# Recreate it using a local_file resource.
+# Required: a local_file resource that creates "config/app.conf"
+#           with content "mode=production".
 #
-# Required:
-#   filename = "signal.txt"
-#   content  = "SYSTEM ONLINE"
-
-resource "local_file" "signal" {
-  filename = ""
-  content  = ""
-}
+# Drive the mission from the terminal below:
+#   terraform init | validate | plan | apply | destroy
 `;
 
 function initMonaco() {
-  // Register Terraform language
   monaco.languages.register({ id: 'terraform' });
   monaco.languages.setMonarchTokensProvider('terraform', {
     tokenizer: {
@@ -670,7 +648,8 @@ function initMonaco() {
     contextmenu: false,
   });
 
-  // Resize observer
+  state.editor.onDidChangeModelContent(() => scheduleAutoSave());
+
   const resizeObs = new ResizeObserver(() => state.editor.layout());
   resizeObs.observe(document.getElementById('monaco-container'));
 }
@@ -683,15 +662,15 @@ const tourSteps = [
   {
     label:  'ORIENTATION · STEP 1 OF 4',
     title:  'The War Room',
-    text:   'This is where your team talks. The CTO gives orders, the Intern causes chaos, and SYSTEM alerts flag what\'s broken. Pay close attention — the clues you need to fix things are buried in here.',
+    text:   'Your team talks here. The CTO gives orders, the Intern panics, SYSTEM reports the damage. Read carefully — the fix is in the conversation.',
     progress: '● ○ ○ ○',
     target: 'npc-panel',
     cardPos: 'right',
   },
   {
     label:  'ORIENTATION · STEP 2 OF 4',
-    title:  'The Terraform Editor',
-    text:   'This is where you write infrastructure code. Fill in the missing values, then run the buttons below in order: Initialize → Simulate → Execute. Never execute without simulating first.',
+    title:  'The Editor — Blank Slate',
+    text:   'Only the provider block is filled in. You write the rest of main.tf yourself: a local_file resource that creates the missing config. Your edits auto-save.',
     progress: '● ● ○ ○',
     target: 'editor-panel',
     cardPos: 'right',
@@ -699,15 +678,15 @@ const tourSteps = [
   {
     label:  'ORIENTATION · STEP 3 OF 4',
     title:  'Infrastructure Map',
-    text:   'This shows what exists in the system right now. That ghost node is the missing signal file. Once you restore it, it comes online here. Think of it as your live view of the damage — and your progress.',
+    text:   'Live view of the system. The config/ directory and app.conf are both missing. Restore them through Terraform and watch the nodes turn green.',
     progress: '● ● ● ○',
     target: 'map-panel',
     cardPos: 'left',
   },
   {
     label:  'ORIENTATION · STEP 4 OF 4',
-    title:  'Terminal — Read Only',
-    text:   'This is not an input. The blinking cursor is just for show. The terminal prints what Terraform is doing in real time — provider downloads, plan output, apply results. You watch here, you act in the editor above.',
+    title:  'Terminal — You Drive',
+    text:   "No buttons this level. Click here and type real terraform commands: init, validate, plan, apply, destroy. Type 'help' if you forget. ArrowUp recalls history.",
     progress: '● ● ● ●',
     target: 'terminal-panel',
     cardPos: 'top',
@@ -716,9 +695,9 @@ const tourSteps = [
 ];
 
 const finalTourDialogue = [
-  { char: 'CTO',    text: 'Signal file is missing. You have 10 minutes before I start assigning blame.' },
-  { char: 'INTERN', text: "it's just a text file. how hard can it be" },
-  { char: 'CTO',    text: "Famous last words. I've seen careers end over a missing semicolon." },
+  { char: 'CTO',    text: 'No training wheels this level. Write the resource, type the commands. Just like prod.' },
+  { char: 'INTERN', text: 'wait there are no buttons?? where did the buttons go??' },
+  { char: 'CTO',    text: "Type 'help' in the terminal if you forget the commands. Or don't. I'm watching either way." },
 ];
 
 let tourIndex = 0;
@@ -731,19 +710,16 @@ function startTour() {
 
 function renderTourStep() {
   const step = tourSteps[tourIndex];
-  const overlay = document.getElementById('tour-overlay');
   const spotlight = document.getElementById('tour-spotlight');
   const card = document.getElementById('tour-card');
   const target = document.getElementById(step.target);
 
-  // Update card text
   document.getElementById('tour-step-label').textContent = step.label;
   document.getElementById('tour-title').textContent = step.title;
   document.getElementById('tour-text').textContent = step.text;
   document.getElementById('tour-progress').textContent = step.progress;
   document.getElementById('tour-next').textContent = step.last ? 'START MISSION →' : 'NEXT →';
 
-  // Position spotlight over target panel
   const rect = target.getBoundingClientRect();
   const pad = 4;
   spotlight.style.left   = (rect.left - pad) + 'px';
@@ -751,7 +727,6 @@ function renderTourStep() {
   spotlight.style.width  = (rect.width + pad * 2) + 'px';
   spotlight.style.height = (rect.height + pad * 2) + 'px';
 
-  // Position tooltip card
   card.classList.remove('visible');
   requestAnimationFrame(() => {
     const cardW = 300;
@@ -764,19 +739,15 @@ function renderTourStep() {
       cardLeft = rect.left - cardW - 16;
       cardTop  = rect.top + 24;
     } else {
-      // top — card floats above the panel, centered
       cardLeft = rect.left + (rect.width / 2) - (cardW / 2);
       cardTop  = rect.top - 200;
     }
 
-    // Clamp to viewport
     cardLeft = Math.max(8, Math.min(cardLeft, window.innerWidth - cardW - 8));
     cardTop  = Math.max(56, Math.min(cardTop, window.innerHeight - 260));
 
     card.style.left = cardLeft + 'px';
     card.style.top  = cardTop + 'px';
-
-    // Adjust arrow direction based on position
     card.style.setProperty('--arrow-side', step.cardPos === 'right' ? 'left' : 'right');
 
     setTimeout(() => card.classList.add('visible'), 40);
@@ -824,7 +795,6 @@ function acceptBriefing() {
   setTimeout(() => {
     overlay.classList.remove('visible');
     overlay.style.opacity = '';
-    // Small breath before tour starts
     if (state.tourSkipped) {
       finishTour();
     } else {
@@ -838,59 +808,55 @@ function acceptBriefing() {
 // ═══════════════════════════════════════════════════════
 
 function saveState() {
-  localStorage.setItem('tg_state', JSON.stringify({
-    phase: state.phase,
+  localStorage.setItem('tg_state_l2', JSON.stringify({
     chaos: state.chaos,
     xp: state.xp,
     chaosTriggered: state.chaosTriggered,
+    initDone: state.initDone,
     planPassed: state.planPassed,
+    applyDone: state.applyDone,
+    destroyDone: state.destroyDone,
     tourSkipped: state.tourSkipped,
   }));
 }
 
 // ═══════════════════════════════════════════════════════
-// UTILITY
-// ═══════════════════════════════════════════════════════
-
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// ═══════════════════════════════════════════════════════
-// DEBRIEF TOUR
+// DEBRIEF
 // ═══════════════════════════════════════════════════════
 
 const debriefSteps = [
   {
     eyebrow:  'DEBRIEF · STEP 1 OF 5',
-    title:    'What is a <span>resource</span>?',
-    body:     `The block you wrote — <code>resource "local_file" "signal"</code> — is a <strong>Terraform resource declaration</strong>.\n\nIt tells Terraform: "make this thing exist." In this case, a file on disk. In real infrastructure, it could be a server, a database, a DNS record — anything your cloud provider can create.`,
+    title:    'Writing a resource <span>from scratch</span>',
+    body:     `This level handed you only the <code>terraform { required_providers }</code> block. The provider config tells Terraform which plugin to download. The actual <code>resource</code> block — what you wrote — is what describes infrastructure to create.\n\nIn production, this is normal. You start most projects with an empty editor and a provider doc tab open.`,
     progress: '● ○ ○ ○ ○',
     highlight: 'editor-panel',
   },
   {
     eyebrow:  'DEBRIEF · STEP 2 OF 5',
-    title:    'The <span>filename</span> and <span>content</span> arguments',
-    body:     `Inside the resource block, <code>filename</code> and <code>content</code> are <strong>arguments</strong> — the specific settings for that resource.\n\n<code>filename = "signal.txt"</code> told Terraform what to call the file.\n<code>content = "SYSTEM ONLINE"</code> told Terraform what to write inside it.\n\nEvery resource type has its own set of arguments. You look them up in the provider docs.`,
+    title:    'Why <span>terraform validate</span> exists',
+    body:     `Before <code>plan</code> can run, your HCL needs to parse. <code>terraform validate</code> checks syntax and references without contacting any provider.\n\nIt's the fastest feedback loop — useful when you're writing a new resource and you're not sure if you closed every brace.`,
     progress: '● ● ○ ○ ○',
-    highlight: 'editor-panel',
-  },
-  {
-    eyebrow:  'DEBRIEF · STEP 3 OF 5',
-    title:    'Why did you <span>simulate</span> first?',
-    body:     `<code>terraform plan</code> is a dry run. Terraform figures out what it <em>would</em> do — without touching anything real.\n\nYou saw it in the terminal: <code>Plan: 1 to add, 0 to change, 0 to destroy.</code>\n\nIn production, applying without planning first is how you accidentally delete databases. The CTO was serious.`,
-    progress: '● ● ● ○ ○',
     highlight: 'terminal-panel',
   },
   {
-    eyebrow:  'DEBRIEF · STEP 4 OF 5',
-    title:    'What did <span>apply</span> actually do?',
-    body:     `<code>terraform apply</code> executed the plan. Terraform created <code>signal.txt</code> with the content you specified — and recorded it in <strong>state</strong>.\n\nTerraform state is how it tracks what exists. That's why the infrastructure map updated: Terraform told the system "this resource now exists."`,
-    progress: '● ● ● ● ○',
+    eyebrow:  'DEBRIEF · STEP 3 OF 5',
+    title:    '<span>Paths create directories</span>',
+    body:     `Your <code>filename = "config/app.conf"</code> told Terraform to write inside a subdirectory. The <code>local_file</code> provider creates that <code>config/</code> directory automatically.\n\nThis is the IaC mindset: you describe the desired end state, not the steps. You don't mkdir, then touch, then write. You declare the file and let Terraform figure it out.`,
+    progress: '● ● ● ○ ○',
     highlight: 'map-panel',
   },
   {
+    eyebrow:  'DEBRIEF · STEP 4 OF 5',
+    title:    '<span>Plan → Apply</span> still applies',
+    body:     `Even without buttons enforcing the order, the discipline matters. <code>terraform plan</code> shows you what will change. <code>terraform apply</code> commits it.\n\nIn a real pipeline, plan output is reviewed in a pull request. Apply is the merge. Skip the plan, skip the review.`,
+    progress: '● ● ● ● ○',
+    highlight: 'terminal-panel',
+  },
+  {
     eyebrow:  'DEBRIEF · STEP 5 OF 5',
-    title:    'Why <span>destroy</span> at the end?',
-    body:     `<code>terraform destroy</code> removed the resource cleanly — and updated state to match. No orphaned files, no drift.\n\nThis is the discipline Terraform enforces: you don't just delete things manually. You declare what should exist, and let Terraform reconcile reality to match your code.\n\n<strong>That's infrastructure as code.</strong>`,
+    title:    'Clean teardown with <span>destroy</span>',
+    body:     `<code>terraform destroy</code> removed the resource and updated state. The <code>config/</code> directory went with it.\n\nNo orphaned files. No drift. The next engineer who clones this repo will see exactly what's running — because what's running is exactly what's in code.\n\n<strong>That's infrastructure as code.</strong>`,
     progress: '● ● ● ● ●',
     highlight: null,
     last: true,
@@ -918,11 +884,8 @@ function renderDebriefStep() {
   document.getElementById('debrief-progress').textContent = step.progress;
   document.getElementById('debrief-next').textContent     = step.last ? 'FINISH →' : 'NEXT →';
   const backBtn = document.getElementById('debrief-back');
-  if (backBtn) {
-    backBtn.disabled = debriefIndex === 0;
-  }
+  if (backBtn) backBtn.disabled = debriefIndex === 0;
 
-  // Position highlight box
   if (step.highlight) {
     const target = document.getElementById(step.highlight);
     const r = target.getBoundingClientRect();
@@ -935,7 +898,6 @@ function renderDebriefStep() {
     highlight.style.display = 'none';
   }
 
-  // Position card — center of screen, slightly above middle
   card.style.left = (window.innerWidth / 2 - 190) + 'px';
   card.style.top  = (window.innerHeight / 2 - 160) + 'px';
 
@@ -949,7 +911,6 @@ function debriefNext() {
   if (debriefIndex >= debriefSteps.length - 1) {
     setTimeout(() => {
       document.getElementById('debrief-overlay').classList.remove('visible');
-      // Now show the war room card
       document.getElementById('war-room').classList.add('visible');
     }, 300);
   } else {
@@ -967,57 +928,75 @@ function debriefBack() {
 }
 
 // ═══════════════════════════════════════════════════════
+// WAR ROOM
+// ═══════════════════════════════════════════════════════
+
+function showWarRoom() {
+  const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  document.getElementById('war-time').textContent =
+    mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+
+  document.getElementById('war-chaos-count').textContent = state.chaosEventCount;
+
+  if (state.chaosEventCount > 0) {
+    document.getElementById('war-chaos-count').classList.add('red');
+    const section = document.getElementById('chaos-event-section');
+    section.classList.add('visible');
+    const reasonLines = state.chaosReasons.map((r, i) => `${i + 1}. ${r}`).join('\n');
+    document.getElementById('chaos-event-text').innerHTML =
+      reasonLines.replace(/\n/g, '<br>') + '<br>The CTO has noted this.';
+  }
+
+  const summaries = state.chaosTriggered
+    ? [
+        "The missing app-config artifact was restored after one or more chaos events on the way. Final state was clean, but the path there was not.",
+        "Service recovery completed, though the engineer triggered chaos events along the way — review logged for post-mortem."
+      ]
+    : [
+        "The missing config directory and app.conf were restored with a clean plan → apply → destroy cycle. Zero chaos. Textbook.",
+        "App service config was rebuilt from scratch via Terraform, executed from the CLI, and torn down without drift."
+      ];
+  document.getElementById('incident-summary-text').textContent =
+    summaries[Math.floor(Math.random() * summaries.length)];
+
+  startDebrief();
+}
+
+function showNextMission() {
+  const btn = document.querySelectorAll('.war-btn.secondary')[1];
+  btn.textContent = '[ COMING SOON ]';
+  btn.style.borderColor = 'var(--grey)';
+  btn.style.color = 'var(--grey)';
+  btn.style.opacity = '0.5';
+  btn.style.cursor = 'default';
+}
+
+function restartGame() {
+  localStorage.removeItem('tg_state_l2');
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════
 
 window.addEventListener('load', () => {
   initDevIdentity();
+  initTerminal();
 
-  // Initial terminal prompt
-  const out = document.getElementById('terminal-output');
-  const cursor = document.getElementById('terminal-cursor');
-  out.insertBefore(document.createTextNode('terraformageddon v1.0.0 — ready\n$ '), cursor);
+  appendTerminalLine('terraformageddon v1.0.0 — interactive mode\n');
+  appendTerminalLine("Type 'help' for available commands.\n\n");
 
-  // Connect to backend and set up session (non-blocking — game continues if it fails)
   initSession();
 
-  // Step 1: First two SYSTEM messages stream in as toasts (sets the scene)
   setTimeout(() => {
     queueMessages([
-      { char: 'SYSTEM', text: 'ERROR: status artifact not found at expected path.' },
-      { char: 'SYSTEM', text: 'Expected: signal.txt — Content: SYSTEM ONLINE' },
+      { char: 'SYSTEM', text: 'ERROR: app-svc-prod failed to boot — config/app.conf not found.' },
+      { char: 'SYSTEM', text: 'Expected: filename = config/app.conf, content = mode=production' },
     ], 1500);
   }, 800);
 
-  // Step 2: After those two messages settle, show the briefing modal
-  // 800 boot delay + 2 messages × 1500 gap + typing ~800ms each = ~5400ms
   setTimeout(showBriefing, 5200);
 });
-// Landing page helper: swaps placeholders for real images when assets load
-(function landingImageLoader() {
-  const images = document.querySelectorAll('.char-slot img');
-  if (!images.length) return;
-
-  const showImage = img => {
-    if (img.naturalWidth > 0) {
-      img.style.display = 'block';
-      const placeholder = img.closest('.char-slot')?.querySelector('.placeholder');
-      if (placeholder) placeholder.style.display = 'none';
-    }
-  };
-
-  images.forEach(img => {
-    img.addEventListener('load', () => showImage(img));
-    showImage(img);
-  });
-})();
-function initScrollTop() {
-  if (!document.body.classList.contains('landing')) return;
-  const btn = document.getElementById('scroll-top');
-  if (!btn) return;
-  const toggle = () => btn.classList.toggle('visible', window.scrollY > 260);
-  toggle();
-  window.addEventListener('scroll', () => toggle());
-  btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-}
-initScrollTop();

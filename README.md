@@ -82,7 +82,7 @@ The game screen is a fixed 3-column CSS Grid with a top HUD bar:
 | Level | Status | Incident | Concepts |
 |---|---|---|---|
 | 01 — Signal Missing | **Active** | P0 · Production Degraded | `local_file`, resource blocks, plan → apply, destroy |
-| 02 — Ghost Variable | Coming Soon | P1 · Config Drift | variables, outputs, tfvars |
+| 02 — Missing Config | **Active** | P1 · Service Can't Boot | `local_file` from scratch, paths/subdirs, `terraform validate`, interactive CLI |
 | 03 — State of Emergency | Locked | P0 · State Corruption | terraform state, import, refresh |
 | 04 — The Broken Module | Locked | P0 · Module Failure | modules, workspaces, depends_on |
 
